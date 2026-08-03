@@ -1,0 +1,2075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trades card editor — Field guide</title>
+<style>*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0}</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- ══════════════════════════ COVER ══════════════════════════ -->
+  <section class="slide" data-title="Cover">
+    <div class="inner">
+      <article class="panel cover">
+        <div class="cover-l">
+          <header class="head">
+            <div class="eyebrow">
+              <span class="kicker">Field guide</span><span class="rule"></span>
+            </div>
+            <h1>Trades&nbsp;card editor</h1>
+            <p class="lead">One HTML file that turns a raw chart screenshot into a clean
+              1920&nbsp;×&nbsp;1080 trade card — session tabs, symbol badge, timeframe pill
+              and wordmark — and exports it at up to 7680&nbsp;×&nbsp;4320.</p>
+          </header>
+
+          <div class="facts">
+            <div class="fact"><b>1</b><span>file</span></div>
+            <div class="fact"><b>0</b><span>dependencies</span></div>
+            <div class="fact"><b>0</b><span>servers</span></div>
+            <div class="fact"><b>0</b><span>bytes uploaded</span></div>
+          </div>
+
+          <p class="navhint">Arrow keys, or the dots below, move through the guide.</p>
+        </div>
+
+        <figure class="cardfig">
+          <canvas id="hero" width="1920" height="1080" aria-label="Live preview of a trade card: a candlestick chart with session tabs, symbol badge, timeframe pill and wordmark drawn over it"></canvas>
+          <figcaption>
+            <div class="ctl">
+              <span class="ctl-lab">Symbol</span>
+              <div class="chips" id="heroSym"></div>
+            </div>
+            <div class="ctl">
+              <span class="ctl-lab">Session</span>
+              <div class="chips" id="heroSess"></div>
+            </div>
+            <div class="ctl">
+              <span class="ctl-lab">Logo</span>
+              <div class="chips" id="heroLogo"></div>
+            </div>
+          </figcaption>
+        </figure>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ THE RULE ══════════════════════════ -->
+  <section class="slide" data-title="How it works">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="tag">Principle</span><span class="rule"></span></div>
+          <h2>The preview canvas <em>is</em> the export canvas</h2>
+          <p class="sub">Every other guarantee in this tool follows from that one decision.</p>
+        </header>
+
+        <div class="two">
+          <div class="col">
+            <p>Most editors keep a fast preview and a separate render path for the final
+              file. The two drift — a label lands a pixel left, a shadow renders heavier,
+              and the download never quite matches what you framed.</p>
+            <p>Here the on-screen canvas is declared at <code>1920 × 1080</code> and the
+              export reads that same composition back. There is no second render path that
+              can disagree with the first, so the downloaded PNG is the thing you looked at.</p>
+
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>The <em>composition</em> is always 1920 × 1080 — a fixed 16:9 frame. Export
+                quality changes how many pixels that composition is rasterised into, never
+                how it is laid out. A card framed at 1080p and a card framed at 8K are the
+                same card.</p>
+            </div>
+          </div>
+
+          <div class="col">
+            <ol class="pipe">
+              <li><b>Screenshot in</b><span>File picker, drag and drop, or paste. Never leaves the tab.</span></li>
+              <li><b>Working copy</b><span>Capped at 3840&nbsp;px on the long edge so panning stays smooth. The untouched original is kept alongside it.</span></li>
+              <li><b>Frame</b><span>Zoom, offset and per-side trim are stored as numbers, not baked into pixels.</span></li>
+              <li><b>Overlay</b><span>Tabs, badge, pill and wordmark are drawn as vectors and text — never as bitmaps.</span></li>
+              <li><b>PNG out</b><span>Overlays redrawn at the output resolution; image pixels pulled from the original, not the working copy.</span></li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="strip">
+          <span class="strip-lab">Privacy</span>
+          <p>No server component. Nothing is stored, no cookies are set, and no data is sent
+            anywhere. The only network request the page makes is for its two webfonts.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 01 LOAD ══════════════════════════ -->
+  <section class="slide" data-title="Load">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="num">01</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Load the screenshot</h2>
+          <p class="sub">Three ways in. All of them land in the same place.</p>
+        </header>
+
+        <div class="two">
+          <div class="col">
+            <div class="spec">
+              <div class="row">
+                <span class="lab">Load screenshot</span>
+                <p>Opens the file picker. Accepts anything the browser can decode as an
+                  image — PNG, JPG, WebP, GIF, AVIF.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Drag and drop</span>
+                <p>Drop a file anywhere on the canvas area.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Paste</span>
+                <p>Press <kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>V</kbd> anywhere on the page. The
+                  fastest route: snip a chart, paste, export — no file ever hits your disk.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <h3 class="h3">What happens the moment it lands</h3>
+            <p>The original image is retained at full resolution. If its long edge exceeds
+              3840&nbsp;px, a downscaled copy is built and the editor drives off that copy
+              instead — which is why dragging a 6000&nbsp;px screenshot around still feels
+              immediate.</p>
+            <p>Framing state resets: zoom to 100%, offset to centre, all four trims to
+              zero, fit mode to <span class="k">Fit</span>.</p>
+
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>Using a lighter copy costs you nothing at export. When you export, the
+                image pixels are read back out of the original, so no detail from the source
+                screenshot is thrown away — the working copy exists only to keep the drag smooth.</p>
+            </div>
+
+            <div class="note warn">
+              <span class="note-lab">HEIC will not load</span>
+              <p>Browsers cannot decode Apple's HEIC format. On iPhone, either take a
+                screenshot — those are always PNG — or switch the camera over in
+                <span class="k">Settings</span> → <span class="k">Camera</span> →
+                <span class="k">Formats</span> → <span class="k">Most Compatible</span>.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 02 FRAME ══════════════════════════ -->
+  <section class="slide" data-title="Frame">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="num">02</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Frame it</h2>
+          <p class="sub">The part that takes the longest and matters the most.</p>
+        </header>
+
+        <div class="two">
+          <div class="col">
+            <div class="spec">
+              <div class="row">
+                <span class="lab">Fit / Fill</span>
+                <p>Where framing starts. <span class="k">Fit</span> shows the whole
+                  screenshot and pads the leftover edges with the card background.
+                  <span class="k">Fill</span> covers the frame edge to edge and lets the
+                  overflow crop away. Either one resets zoom and position.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Zoom</span>
+                <p>Drag the slider (20–400%), or step with
+                  <span class="k">±0.1%</span> and <span class="k">±0.5%</span> for the last
+                  bit of alignment. Scroll or pinch on the canvas zooms toward the pointer
+                  and reaches 600%.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Position</span>
+                <p>Drag the canvas, nudge 1&nbsp;px or 10&nbsp;px with the buttons, or use
+                  the arrow keys — <kbd>Shift</kbd> makes each press 10&nbsp;px.
+                  <span class="k">Centre</span> returns the offset to 0,&nbsp;0 without
+                  touching zoom.</p>
+              </div>
+            </div>
+
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>Hold <kbd>Shift</kbd> while scrolling and the zoom step drops from 2% to
+                0.2% per notch. It is the difference between hunting for an alignment and
+                landing on it.</p>
+            </div>
+          </div>
+
+          <div class="col">
+            <h3 class="h3">Trim edges</h3>
+            <p>The control that solves half candles. Zooming to hide a half-drawn candle at
+              the right edge moves everything else too. Trim works differently: it crops in
+              <em>source pixels</em>, per side, before the frame is computed — so the edge
+              goes away and the composition stays put.</p>
+            <figure class="trimfig">
+              <canvas id="trim" width="880" height="380" aria-label="Diagram: a screenshot with a partial candle at the right edge, and the same screenshot with that edge trimmed away"></canvas>
+              <figcaption>One source, read two ways. Left: the full width, half a candle
+                clipped at the edge. Right: 34&nbsp;px less of that edge, re-fitted to the
+                same frame.</figcaption>
+            </figure>
+            <div class="spec tight">
+              <div class="row">
+                <span class="lab">Controls</span>
+                <p>Each side takes <span class="k">−1</span>, <span class="k">+1</span>,
+                  <span class="k">+10</span>, or a typed value. Opposite sides cannot meet —
+                  at least 20&nbsp;px of image always survives.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 03 LABEL ══════════════════════════ -->
+  <section class="slide" data-title="Label">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="num">03</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Set the labels</h2>
+          <p class="sub">Symbol, session, timeframe. Everything else on the card is furniture.</p>
+        </header>
+
+        <div class="two wide-left">
+          <div class="col">
+            <h3 class="h3">Symbol</h3>
+            <p>Seven instruments, each with a badge drawn from scratch on the canvas — no
+              image files, which is why they stay crisp at 8K. The index futures carry the
+              index size rather than the ticker, because that is what people recognise.</p>
+
+            <div class="badges" id="badges"></div>
+
+            <div class="spec tight">
+              <div class="row">
+                <span class="lab">Metals</span>
+                <p><span class="k">GC</span> takes the gold mark, <span class="k">SI</span>
+                  the silver one — the same three-bar glyph on a different ground.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Forex</span>
+                <p>Two overlapping flag discs, quote currency behind the base:
+                  <span class="k">EURUSD</span> and <span class="k">GBPUSD</span>.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <h3 class="h3">Session</h3>
+            <p>Three sessions — London, New York, Asia. Whichever is active is
+              <em>always pinned to the centre</em> of the card; the other two rotate around
+              it and fade outward, so the eye lands on the one that matters.</p>
+            <figure class="tabfig">
+              <canvas id="tabs" width="900" height="150" aria-label="The three session tabs, with the active one filled dark at centre"></canvas>
+              <figcaption>
+                <label class="slid">
+                  <span>Fade</span>
+                  <input type="range" id="fade" min="0" max="100" value="100" aria-label="Session fade amount">
+                  <output id="fadeOut">100%</output>
+                </label>
+              </figcaption>
+            </figure>
+            <p class="fine">At <span class="k">0</span> the two inactive labels sit flat
+              grey. Raising it dissolves each one toward its outer end, away from the
+              centre.</p>
+
+            <h3 class="h3">Timeframe</h3>
+            <p>Ten presets, or type your own — up to six characters, uppercased as you
+              type. Whatever you set lands in the pill above the rail, and in the exported
+              filename.</p>
+            <div class="tfs">
+              <span class="k">M1</span><span class="k">M3</span><span class="k">M5</span>
+              <span class="k">M15</span><span class="k">M30</span><span class="k">H1</span>
+              <span class="k on">H4</span><span class="k">H6</span><span class="k">D1</span>
+              <span class="k">W1</span>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 04 GROUND ══════════════════════════ -->
+  <section class="slide" data-title="Ground">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="num">04</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Choose the ground</h2>
+          <p class="sub">Change the background and the whole card follows it.</p>
+        </header>
+
+        <p class="wide-p">Six presets, a colour picker and a hex field. The default
+          <span class="k">#F5F5F5</span> is untouched — but pick anything else and every
+          part of the overlay re-derives itself rather than leaving dark type stranded on
+          a dark card.</p>
+
+        <div class="grounds" id="grounds"></div>
+
+        <div class="two">
+          <div class="col">
+            <div class="spec tight">
+              <div class="row">
+                <span class="lab">Glass</span>
+                <p>Drawn <em>from</em> the background, so it keeps the same relationship to
+                  it at every colour.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Type</span>
+                <p>Keeps a trace of the background's hue instead of snapping to pure black
+                  or white, and flips to light once the ground is dark. Every preset clears
+                  14:1 contrast.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Session pill &amp; edges</span>
+                <p>The pill inverts to light-on-dark grounds; hairlines and shadows swap
+                  with it, which is what keeps a panel legible once the card goes black.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="col">
+            <p>Tone has always moved the panels 10 toward white and up to 32 toward grey.
+              That asymmetry was never arbitrary — 10 is exactly the headroom
+              <span class="k">#F5F5F5</span> has before it clips at white. So the range is
+              now read off whatever ground you pick, and the default still lands on 10 and
+              32.</p>
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>Pure white is the one ground with no room above it. Rather than let the
+                panels dissolve into the card, the separation is taken from the other side
+                — the glass stays visible at every colour.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 05 TUNE ══════════════════════════ -->
+  <section class="slide" data-title="Tune">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="num">05</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Tune the overlay</h2>
+          <p class="sub">Two sliders decide whether the furniture sits on the chart or in it.</p>
+        </header>
+
+        <h3 class="h3">Overlay tone</h3>
+        <p class="wide-p">The glass panels are drawn against a <span class="k">#f5f5f5</span>
+          card background. Tone moves them relative to that background — and it is the
+          control most worth learning, because a bright chart and a dark chart want opposite
+          answers.</p>
+
+        <div class="tones" id="tones"></div>
+
+        <div class="two">
+          <div class="col">
+            <div class="spec tight">
+              <div class="row">
+                <span class="lab">Overlay size</span>
+                <p>Scales every piece of furniture together, 80–120%. Tabs, badge, capsule,
+                  pill and wordmark keep their proportions to each other — one number,
+                  no drift.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Wordmark</span>
+                <p>The centred logo and handle, on by default. Pick the logo, type your
+                  own username, or switch it off for a clean card — all from the
+                  <span class="k">Wordmark</span> panel. See the next slide.</p>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>Tone changes fill <em>and</em> opacity together, and each element carries
+                its own weight — the symbol capsule always reads slightly stronger than the
+                rail behind it, the timeframe pill slightly stronger than both. Move the
+                slider and that relationship survives; you cannot knock the three out of
+                balance.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 05 SIGN ══════════════════════════ -->
+  <section class="slide" data-title="Sign">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="num">06</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Sign the card</h2>
+          <p class="sub">Your logo, your handle — or neither.</p>
+        </header>
+
+        <div class="two">
+          <div class="col">
+            <div class="spec">
+              <div class="row">
+                <span class="lab">Logo</span>
+                <p>Two marks: <span class="k">X</span> and <span class="k">Instagram</span>.
+                  Both are drawn as vectors at export time, so neither softens at 8K.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Username</span>
+                <p>Type anything up to 20 characters. It is <em>not</em> forced to
+                  uppercase — unlike the timeframe field — so lowercase Instagram handles
+                  like <span class="k">yser.trades</span> stay lowercase.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Show on card</span>
+                <p>Hides the whole wordmark. The rail, badge and pill are untouched.</p>
+              </div>
+            </div>
+
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>Clear the username entirely and the logo centres on its own, rather than
+                leaving a dangling slash. A bare mark is often the cleaner signature.</p>
+            </div>
+
+            <p class="fine">Logo and username persist when you load the next screenshot,
+              so a run of cards only needs this set once.</p>
+          </div>
+
+          <div class="col">
+            <h3 class="h3">Solid X, outlined Instagram</h3>
+            <p>The X mark is a filled glyph. The Instagram mark is deliberately not —
+              it is stroked, so the chart behind it shows through the squircle and the
+              lens instead of being punched out by a solid block.</p>
+            <figure class="markfig">
+              <canvas id="marks" width="880" height="300" aria-label="The X mark and the Instagram mark side by side over a coloured band, showing that the Instagram outline lets the band show through"></canvas>
+              <figcaption>The X is a solid glyph; the Instagram mark is stroked, so on the
+                card the chart carries on through the squircle and the lens.</figcaption>
+            </figure>
+            <p class="fine">Both are rendered in the card's ink, not brand colour, so the
+              signature stays part of the card rather than competing with it.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ 06 EXPORT ══════════════════════════ -->
+  <section class="slide" data-title="Export">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="num">07</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Export</h2>
+          <p class="sub">Lossless PNG. Four sizes. Three ways to get the file out.</p>
+        </header>
+
+        <div class="sizes">
+          <div class="size"><b>1080p</b><span>1920 × 1080</span><small>Rendered at 2× and resolved down</small></div>
+          <div class="size on"><b>4K</b><span>3840 × 2160</span><small>Default</small></div>
+          <div class="size"><b>6K</b><span>5760 × 3240</span><small>Native redraw</small></div>
+          <div class="size"><b>8K</b><span>7680 × 4320</span><small>Native redraw</small></div>
+        </div>
+
+        <div class="two">
+          <div class="col">
+            <h3 class="h3">Why the big sizes are actually bigger</h3>
+            <p>Nothing is upscaled. Every label, badge and panel is drawn again at the
+              output size rather than stretched from the preview, and the image pixels
+              come from your original screenshot, not the editing copy.</p>
+            <p>Each size is also rendered larger than it is saved and resolved down, which
+              smooths the curve of a badge and the edge of the type — a full double pass
+              at 1080p and 4K, a partial one at 6K.</p>
+
+            <div class="note warn">
+              <span class="note-lab">Your screenshot is the ceiling</span>
+              <p>That cleans up the overlay, not the chart. A 1080p screenshot exported at
+                8K gives crisp badges over a chart with no more detail than it started
+                with. Grab the source large and the big sizes pay off.</p>
+            </div>
+            <div class="note">
+              <span class="note-lab">Filenames</span>
+              <p>Exports name themselves from what is on the card:
+                <code>NQ-NewYork-H4-3840x2160.png</code>. Sort a folder of them and they
+                group by instrument on their own.</p>
+            </div>
+          </div>
+
+          <div class="col">
+            <h3 class="h3">Getting the file out</h3>
+            <p>A download fires automatically, then a bar appears with a thumbnail and
+              three routes. This is deliberate: inside an embedded frame a plain download
+              can be blocked by the host's sandbox, and at least one of these always works.</p>
+            <div class="spec tight">
+              <div class="row"><span class="lab">Download</span><p>Fires the download again, by hand.</p></div>
+              <div class="row"><span class="lab">Share</span><p>The native share sheet. Appears only where the device supports sharing files — mostly phones.</p></div>
+              <div class="row"><span class="lab">Open in tab</span><p>Opens the PNG on its own so you can save it manually. The universal fallback.</p></div>
+            </div>
+            <p class="fine">If a device cannot allocate a canvas that large, the export
+              steps down and tells you to pick a smaller size rather than failing silently.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ CONTROL REFERENCE ══════════════════════════ -->
+  <section class="slide" data-title="Controls">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="tag">Reference</span><span class="kicker">What goes on the card</span><span class="rule"></span></div>
+          <h2>Control reference — the card</h2>
+          <p class="sub">Everything that becomes part of the composition.</p>
+        </header>
+
+        <div class="spec cols2">
+          <div class="row">
+            <span class="lab">Symbol</span>
+            <p>Futures <span class="k">NQ</span> <span class="k">ES</span>
+              <span class="k">YM</span> <span class="k">GC</span> <span class="k">SI</span>,
+              forex <span class="k">EURUSD</span> <span class="k">GBPUSD</span>.
+              Default <span class="k">NQ</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Session</span>
+            <p><span class="k">London</span> <span class="k">New York</span>
+              <span class="k">Asia</span>. The active one is centred and the other two
+              rotate around it. Default <span class="k">New York</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Fade</span>
+            <p>0–100. How far the two inactive session labels dissolve toward their outer
+              ends. <span class="k">0</span> leaves them flat grey. Default
+              <span class="k">100</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Timeframe</span>
+            <p><span class="k">M1</span> <span class="k">M3</span> <span class="k">M5</span>
+              <span class="k">M15</span> <span class="k">M30</span> <span class="k">H1</span>
+              <span class="k">H4</span> <span class="k">H6</span> <span class="k">D1</span>
+              <span class="k">W1</span>, or a custom label up to 6 characters, forced
+              uppercase. Default <span class="k">H4</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Background</span>
+            <p>Six presets, a colour picker, or a typed hex. Every overlay colour derives
+              from it. Default <span class="k">#F5F5F5</span>;
+              <span class="k">Reset</span> returns to it.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Overlay size</span>
+            <p>80–120%. Scales all furniture together. Default <span class="k">100%</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Overlay tone</span>
+            <p>−100 to +100. <span class="k">flat</span> at zero melts the panels into the
+              background; positive lifts them toward white; negative sinks them into a soft
+              grey. Default <span class="k">+50</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Wordmark — logo</span>
+            <p><span class="k">X</span> filled, or <span class="k">Instagram</span> as an
+              outline the chart shows through. Default <span class="k">X</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Wordmark — username</span>
+            <p>Free text up to 20 characters, case preserved. Empty centres the logo on
+              its own. Default <span class="k">YSERTRADES</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Show on card</span>
+            <p>Hides the centred logo and handle without touching the rail, badge or
+              pill. On by default.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════ CONTROL REFERENCE — FRAME ══════════════════ -->
+  <section class="slide" data-title="Controls · frame">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="tag">Reference</span><span class="kicker">Framing &amp; output</span><span class="rule"></span></div>
+          <h2>Control reference — the frame</h2>
+          <p class="sub">Everything that decides which pixels land inside the composition.</p>
+        </header>
+
+        <div class="spec cols2">
+          <div class="row">
+            <span class="lab">Zoom</span>
+            <p>Slider 20–400%. Scroll and pinch reach 600%. Steps of ±0.1% and ±0.5%;
+              scroll steps 2%, or 0.2% with <kbd>Shift</kbd>. Zooming by gesture keeps the
+              point under your cursor fixed.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Fit / Fill</span>
+            <p><span class="k">Fit</span> contains the whole screenshot,
+              <span class="k">Fill</span> covers the frame. Both reset zoom to 100% and
+              position to centre. Default <span class="k">Fit</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Position</span>
+            <p>Offset in card pixels from centre. Drag, arrow keys, or ±1 and ±10 buttons.
+              <span class="k">Centre</span> zeroes it without changing zoom.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Trim edges</span>
+            <p>Per-side crop measured in source pixels, applied before framing. Opposite
+              sides are prevented from meeting — 20&nbsp;px of image always remains.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Export quality</span>
+            <p><span class="k">1080p</span> <span class="k">4K</span>
+              <span class="k">6K</span> <span class="k">8K</span>, all lossless PNG.
+              Default <span class="k">4K</span>.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Reset</span>
+            <p>Returns zoom, position, all four trims and fit mode to defaults. Keeps your
+              screenshot and your labels.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Remove screenshot</span>
+            <p>Clears the image and all framing, and frees the memory it was holding.
+              Labels and overlay settings survive.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ KEYS ══════════════════════════ -->
+  <section class="slide" data-title="Keys">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="tag">Reference</span><span class="kicker">Input</span><span class="rule"></span></div>
+          <h2>Keys &amp; gestures</h2>
+          <p class="sub">Everything you can do without reaching for the panel.</p>
+        </header>
+
+        <div class="two">
+          <div class="col">
+            <h3 class="h3">Keyboard</h3>
+            <table class="keys">
+              <tbody>
+                <tr><td><kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>V</kbd></td><td>Paste a screenshot from the clipboard</td></tr>
+                <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Nudge the image 1&nbsp;px</td></tr>
+                <tr><td><kbd>Shift</kbd> + arrow</td><td>Nudge 10&nbsp;px</td></tr>
+                <tr><td><kbd>Shift</kbd> + scroll</td><td>Fine zoom — 0.2% a notch instead of 2%</td></tr>
+              </tbody>
+            </table>
+            <p class="fine">Arrow keys are ignored while you are typing in a field, so a
+              custom timeframe never moves the frame.</p>
+          </div>
+
+          <div class="col">
+            <h3 class="h3">Pointer &amp; touch</h3>
+            <table class="keys">
+              <tbody>
+                <tr><td>Drag</td><td>Move the image inside the frame</td></tr>
+                <tr><td>Scroll</td><td>Zoom toward the cursor</td></tr>
+                <tr><td>Pinch</td><td>Zoom toward the midpoint of both fingers</td></tr>
+                <tr><td>Drop</td><td>Load a file dropped on the canvas</td></tr>
+              </tbody>
+            </table>
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>Lift one finger mid-pinch and the gesture becomes a drag from exactly where
+                that finger sits — no jump. Zoom and pan are one continuous motion.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════ RECIPE ══════════════════════════ -->
+  <section class="slide" data-title="Recipe">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="tag">Close</span><span class="rule"></span></div>
+          <h2>The sixty-second card</h2>
+          <p class="sub">Once it is muscle memory, this is the whole loop.</p>
+        </header>
+
+        <ol class="recipe">
+          <li><b>Snip the chart</b><span>Whatever your OS uses. Do not save it — leave it on the clipboard.</span></li>
+          <li><b>Paste</b><span><kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>V</kbd> anywhere on the page.</span></li>
+          <li><b>Fill, then trim</b><span>Hit <span class="k">Fill</span>, then trim the edge with the half candle. Two clicks, no drift.</span></li>
+          <li><b>Set the labels</b><span>Symbol, session, timeframe — and your logo and handle, once. All of it persists between screenshots.</span></li>
+          <li><b>Check the tone</b><span>Bright chart, push tone negative. Dark chart, leave it lifted.</span></li>
+          <li><b>Export</b><span>4K is the default and the right answer almost always.</span></li>
+        </ol>
+
+        <div class="strip end">
+          <span class="strip-lab">Remember</span>
+          <p>What you see in the preview is the file. If the card looks right on screen,
+            it is right in the download — there is no second render that can disagree.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+</div>
+
+<nav class="nav" aria-label="Slide navigation">
+  <a class="navhome" id="home" href="index.html" aria-label="Back to the editor" title="Back to the editor" hidden>
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    <span>Editor</span>
+  </a>
+  <button class="navbtn" id="prev" aria-label="Previous slide">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <div class="dots" id="dots" role="tablist" aria-label="Slides"></div>
+  <button class="navbtn" id="next" aria-label="Next slide">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
+  <span class="count"><b id="cur">1</b>&thinsp;/&thinsp;<span id="tot">13</span></span>
+</nav>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   TOKENS — colours lifted from index.html's own constants:
+   #46443f active session tab · #1f9bf0 NQ badge · #f2b705 GC badge
+   #f5f5f5 card background · rgba(0,0,0,0.055) glass hairline
+═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   ONE VISUAL WORLD — midnight, with amber.
+
+   Flat colour throughout: nothing sits behind the cards but the
+   ground. The ground is a deep midnight void; the cards are the
+   editor's own Midnight preset (#0f1116) lifted a step above it, so
+   they read as surfaces without ever stopping being dark.
+
+   The accent is amber, which is not a decorative choice — a trading
+   terminal has been amber on black since the 1980s, and it is also
+   the editor's own GC gold. It is the single warm note against a
+   cool dark, and everything else stays quiet. A coral carries
+   warnings so they never read as the accent.
+═══════════════════════════════════════════════════════════════ */
+:root{
+  --ground:#07090e;              /* deep midnight, flat */
+  --ground-2:#07090e;
+
+  --glass:#161b24;               /* the card: dark, lifted a step */
+  --glass-2:rgba(198,216,242,.055);
+  --hair:rgba(198,216,242,.145);
+  --hair-2:rgba(198,216,242,.085);
+  --edge:rgba(210,228,255,.07);  /* light along the card's top edge */
+
+  --ink:#e9edf4;
+  --ink-2:#aeb8c6;
+  --ink-3:#828e9f;
+
+  --tab-bg:#e9edf4;
+  --tab-fg:#161b24;
+
+  --signal:#e8ab42;              /* amber — the one warm note */
+  --signal-fill:#f2b705;
+  --wash:rgba(232,171,66,.10);
+
+  --gold:#ef7f68;                /* coral, warnings only */
+  --gold-fill:#ef7f68;
+  --warm-wash:rgba(239,127,104,.10);
+
+  --shade:0 6px 22px rgba(0,0,0,.55), 0 28px 72px rgba(0,0,0,.5);
+  --shade-sm:0 2px 12px rgba(0,0,0,.5);
+
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+
+/* ═══════════════════════ FRAME ═══════════════════════ */
+/* Column layout: the deck takes the space that is left and the nav sits below
+   it in flow, so the pill can never come to rest on top of the reading text
+   the way a fixed bar does. */
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:15px; line-height:1.62;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+  height:100vh; height:100dvh;
+  display:flex; flex-direction:column;
+}
+
+.deck{position:relative; flex:1 1 auto; min-height:0; z-index:1;}
+
+.slide{
+  position:absolute; inset:0;
+  display:flex; overflow-y:auto; overflow-x:hidden;
+  padding:20px 16px 24px;
+  -webkit-overflow-scrolling:touch;
+  visibility:hidden; pointer-events:none; opacity:0;
+}
+
+/* ── One card, new contents ───────────────────────────────────────────────
+   Two earlier attempts each had a tell. Fading the panel showed the chart
+   backdrop through it while it was half-transparent; cross-dissolving held
+   the old card underneath, so you saw it ghosting behind the new one.
+
+   Neither is needed. The card is opaque and every slide puts it in the same
+   place, so the outgoing slide can simply go, and what fades is the content
+   arriving on a surface that was never see-through. Nothing overlaps,
+   nothing shows through, and the fade is real.
+────────────────────────────────────────────────────────────────────────── */
+/* opacity:1 is load-bearing. The base .slide rule sets opacity:0, which used
+   to be undone by a slideIn keyframe; when that animation was removed the
+   restore went with it and every slide rendered blank. Layout stayed correct,
+   so nothing that measured overflow or errors noticed. */
+.slide.on{ visibility:visible; pointer-events:auto; opacity:1; }
+
+.slide.on .panel{ animation:panelIn .3s cubic-bezier(.22,.9,.28,1) both; }
+@keyframes panelIn{
+  from{ transform:translateY(6px); }
+  to{ transform:none; }
+}
+.slide.on .panel > *{ animation:contentIn .34s cubic-bezier(.22,.9,.28,1) both; }
+@keyframes contentIn{
+  from{ opacity:0; transform:translateY(9px); }
+  to{ opacity:1; transform:none; }
+}
+.slide.on .panel > *:nth-child(1){ animation-delay:.02s; }
+.slide.on .panel > *:nth-child(2){ animation-delay:.06s; }
+.slide.on .panel > *:nth-child(3){ animation-delay:.09s; }
+.slide.on .panel > *:nth-child(4){ animation-delay:.12s; }
+.slide.on .panel > *:nth-child(n+5){ animation-delay:.14s; }
+
+@media (prefers-reduced-motion:reduce){
+  .slide.on .panel, .slide.on .panel > *{ animation:none; }
+}
+@media (min-width:760px){ .slide{ padding:26px 20px 30px; } }
+.inner{margin:auto; width:100%; max-width:1120px;}
+
+/* ═══════════════════════ GLASS ═══════════════════════
+   The app draws its panels as rgba(252,252,252,0.62) with a 1.4px
+   hairline at rgba(0,0,0,0.055) and a 20px/5px shadow. Same recipe. */
+.panel{
+  background:var(--glass);
+  border:1px solid var(--hair);
+  border-radius:22px;
+  /* the inset hairline is light catching the top edge of the card */
+  box-shadow:var(--shade), inset 0 1px 0 var(--edge);
+  padding:clamp(20px,3.4vw,46px);
+  display:flex; flex-direction:column; gap:clamp(16px,2.1vw,26px);
+}
+
+/* ═══════════════════════ TYPE ═══════════════════════ */
+.head{display:flex; flex-direction:column; gap:9px;}
+.eyebrow{display:flex; align-items:center; gap:13px;}
+.num{
+  font-family:var(--mono); font-size:12px; font-weight:600;
+  letter-spacing:.22em; color:var(--signal);
+  font-variant-numeric:tabular-nums;
+}
+.tag{
+  font-family:var(--mono); font-size:10.5px; font-weight:600;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--signal);
+}
+.kicker{
+  font-family:var(--mono); font-size:10.5px; font-weight:500;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3);
+  white-space:nowrap;
+}
+.rule{flex:1; height:1px; background:var(--hair); min-width:16px;}
+
+h1{
+  margin:0; font-size:clamp(34px,6vw,62px); font-weight:800;
+  letter-spacing:-.038em; line-height:1.02; text-wrap:balance;
+}
+h2{
+  margin:0; font-size:clamp(25px,3.7vw,40px); font-weight:800;
+  letter-spacing:-.032em; line-height:1.08; text-wrap:balance;
+}
+h2 em{font-style:italic; color:var(--signal);}
+.h3{
+  margin:0 0 -6px; font-size:12px; font-weight:700;
+  font-family:var(--mono); letter-spacing:.11em; text-transform:uppercase;
+  color:var(--ink);
+}
+.lead{
+  margin:6px 0 0; font-size:clamp(15.5px,1.55vw,18.5px); line-height:1.55;
+  color:var(--ink-2); max-width:62ch; text-wrap:pretty;
+}
+.sub{
+  margin:0; font-family:var(--mono); font-size:13px; line-height:1.5;
+  color:var(--ink-3); max-width:70ch;
+}
+p{margin:0; max-width:66ch; color:var(--ink-2); text-wrap:pretty;}
+.wide-p{max-width:none;}
+.fine{font-size:13.5px; color:var(--ink-3);}
+em{font-style:italic;}
+b{font-weight:700; color:var(--ink);}
+
+code{
+  font-family:var(--mono); font-size:.88em; color:var(--ink);
+  background:var(--glass-2); border:1px solid var(--hair-2);
+  border-radius:5px; padding:1.5px 5px;
+}
+pre{
+  margin:0; padding:13px 15px; border-radius:12px;
+  background:var(--glass-2); border:1px solid var(--hair-2);
+  overflow-x:auto;
+}
+pre code{background:none; border:0; padding:0; font-size:12.5px; line-height:1.75; color:var(--ink-2);}
+
+/* Inline, not inline-block, with the decoration cloned onto each line box:
+   a long value like a Settings path wraps inside the panel and keeps its
+   border on both halves instead of running off the edge. */
+.k{
+  display:inline; font-family:var(--mono); font-size:11.5px;
+  line-height:1.5; padding:1px 7px; border-radius:6px;
+  border:1px solid var(--hair); color:var(--ink);
+  background:var(--glass-2);
+  -webkit-box-decoration-break:clone; box-decoration-break:clone;
+}
+kbd{
+  display:inline-block; font-family:var(--mono); font-size:11px; font-weight:600;
+  line-height:1.5; padding:2px 7px; border-radius:6px;
+  border:1px solid var(--hair); border-bottom-width:2px;
+  color:var(--ink); background:var(--glass-2); white-space:nowrap;
+}
+
+/* ═══════════════════════ LAYOUT BLOCKS ═══════════════════════ */
+.two{display:grid; grid-template-columns:1fr; gap:clamp(20px,3vw,40px);}
+.col{display:flex; flex-direction:column; gap:16px; min-width:0;}
+@media (min-width:860px){
+  .two{grid-template-columns:1fr 1fr;}
+  .two.wide-left{grid-template-columns:1.08fr 1fr;}
+}
+
+/* spec list — the reference's field/description rhythm */
+.spec{display:grid; grid-template-columns:1fr; gap:0;}
+.spec .row{
+  display:flex; flex-direction:column; gap:5px;
+  padding:13px 0; border-top:1px solid var(--hair-2);
+}
+.spec .row:first-child{border-top:0; padding-top:0;}
+.spec.tight .row{padding:11px 0;}
+.lab{
+  font-family:var(--mono); font-size:12px; font-weight:600;
+  letter-spacing:.01em; color:var(--ink);
+}
+/* Multi-column, not grid: rows pack against the previous one instead of
+   aligning to a shared row height and leaving ragged gaps. */
+@media (min-width:860px){
+  .spec.cols2{display:block; column-count:2; column-gap:44px;}
+  .spec.cols2 .row{break-inside:avoid; border-top:1px solid var(--hair-2); padding:10px 0;}
+}
+.spec.cols2 p{font-size:14px;}
+.tfs{display:flex; flex-wrap:wrap; gap:5px;}
+.tfs .on{background:var(--tab-bg); border-color:var(--tab-bg); color:var(--tab-fg);}
+
+/* callouts */
+.note{
+  border-left:3px solid var(--signal); border-radius:0 12px 12px 0;
+  background:var(--wash); padding:13px 16px;
+  display:flex; flex-direction:column; gap:5px;
+}
+.note.warn{border-left-color:var(--gold-fill); background:var(--warm-wash);}
+.note-lab{
+  font-family:var(--mono); font-size:10px; font-weight:600;
+  letter-spacing:.17em; text-transform:uppercase; color:var(--signal);
+}
+.note.warn .note-lab{color:var(--gold);}
+.note p{font-size:13.8px; color:var(--ink-2);}
+
+.strip{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 18px;
+  padding-top:16px; border-top:1px solid var(--hair-2);
+}
+.strip-lab{
+  font-family:var(--mono); font-size:10px; font-weight:600;
+  letter-spacing:.17em; text-transform:uppercase; color:var(--ink-3);
+  flex:none;
+}
+.strip p{font-size:13.5px; color:var(--ink-3); flex:1; min-width:220px;}
+.strip.end p{color:var(--ink-2);}
+
+/* pipeline */
+.pipe{margin:0; padding:0; list-style:none; counter-reset:p; display:flex; flex-direction:column;}
+.pipe li{
+  counter-increment:p; position:relative;
+  padding:0 0 16px 34px; display:flex; flex-direction:column; gap:2px;
+}
+.pipe li::before{
+  content:counter(p,decimal-leading-zero);
+  position:absolute; left:0; top:2px;
+  font-family:var(--mono); font-size:10.5px; font-weight:600;
+  letter-spacing:.06em; color:var(--signal);
+  font-variant-numeric:tabular-nums;
+}
+.pipe li::after{
+  content:""; position:absolute; left:7px; top:19px; bottom:2px; width:1px;
+  background:var(--hair);
+}
+.pipe li:last-child{padding-bottom:0;}
+.pipe li:last-child::after{display:none;}
+.pipe b{font-size:13.5px;}
+.pipe span{font-size:13.3px; color:var(--ink-3); line-height:1.55;}
+
+/* steps / recipe */
+.steps{margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px; color:var(--ink-2);}
+.steps li{padding-left:4px;}
+.steps li::marker{font-family:var(--mono); font-size:12px; color:var(--ink-3);}
+
+.recipe{
+  margin:0; padding:0; list-style:none; counter-reset:r;
+  display:grid; grid-template-columns:1fr; gap:0;
+}
+@media (min-width:760px){.recipe{grid-template-columns:1fr 1fr; column-gap:44px;}}
+.recipe li{
+  counter-increment:r; position:relative;
+  padding:14px 0 14px 40px; border-top:1px solid var(--hair-2);
+  display:flex; flex-direction:column; gap:3px;
+}
+.recipe li:first-child{border-top:0;}
+@media (min-width:760px){.recipe li:nth-child(2){border-top:0;}}
+.recipe li::before{
+  content:counter(r,decimal-leading-zero);
+  position:absolute; left:0; top:16px;
+  font-family:var(--mono); font-size:11px; font-weight:600;
+  color:var(--signal); font-variant-numeric:tabular-nums;
+}
+.recipe b{font-size:14.5px;}
+.recipe span{font-size:13.4px; color:var(--ink-3); line-height:1.55;}
+
+/* key tables */
+.keys{width:100%; border-collapse:collapse; font-size:13.6px;}
+.keys td{padding:10px 0; border-top:1px solid var(--hair-2); vertical-align:top; color:var(--ink-2);}
+.keys tr:first-child td{border-top:0; padding-top:0;}
+.keys td:first-child{width:44%; padding-right:16px; white-space:nowrap; color:var(--ink);}
+
+/* ═══════════════════════ COVER ═══════════════════════ */
+.panel.cover{display:grid; grid-template-columns:1fr; gap:clamp(24px,3vw,44px); align-items:center;}
+@media (min-width:920px){
+  .panel.cover{grid-template-columns:1fr 1.12fr;}
+}
+.cover-l{display:flex; flex-direction:column; gap:clamp(20px,2.4vw,30px); min-width:0;}
+.navhint{
+  font-family:var(--mono); font-size:11px; letter-spacing:.05em;
+  color:var(--ink-3); max-width:none;
+}
+.cardfig{margin:0; display:flex; flex-direction:column; gap:14px; min-width:0;}
+.cardfig canvas{
+  display:block; width:100%; height:auto; border-radius:14px;
+  border:1px solid var(--hair-2); box-shadow:var(--shade-sm);
+  background:#f5f5f5;
+}
+.cardfig figcaption{display:flex; flex-wrap:wrap; gap:14px 30px;}
+.ctl{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.ctl-lab{
+  font-family:var(--mono); font-size:10px; font-weight:600;
+  letter-spacing:.17em; text-transform:uppercase; color:var(--ink-3);
+}
+.chips{display:flex; flex-wrap:wrap; gap:5px;}
+.chip{
+  font-family:var(--mono); font-size:11.5px; font-weight:500;
+  padding:4px 10px; border-radius:8px; cursor:pointer;
+  border:1px solid var(--hair); background:var(--glass-2); color:var(--ink-2);
+  transition:background .16s ease, color .16s ease, border-color .16s ease;
+}
+.chip:hover{border-color:var(--ink-3);}
+.chip[aria-pressed="true"]{background:var(--tab-bg); border-color:var(--tab-bg); color:var(--tab-fg);}
+
+.facts{
+  display:grid; grid-template-columns:repeat(2,1fr); gap:14px;
+  padding-top:18px; border-top:1px solid var(--hair-2);
+}
+.fact{display:flex; align-items:baseline; gap:8px;}
+.fact b{font-size:26px; font-weight:800; letter-spacing:-.03em; font-variant-numeric:tabular-nums;}
+.fact span{font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:var(--ink-3);}
+
+/* ═══════════════════════ FIGURES ═══════════════════════ */
+.trimfig, .tabfig, .markfig{margin:0; display:flex; flex-direction:column; gap:10px;}
+.trimfig canvas, .tabfig canvas, .markfig canvas{
+  display:block; width:100%; height:auto; border-radius:12px;
+  border:1px solid var(--hair-2); background:var(--glass-2);
+}
+.trimfig figcaption, .markfig figcaption{font-size:12.6px; color:var(--ink-3); line-height:1.5;}
+
+.badges{display:flex; flex-wrap:wrap; gap:10px;}
+.badge{
+  display:flex; align-items:center; gap:9px;
+  padding:7px 13px 7px 8px; border-radius:999px;
+  border:1px solid var(--hair-2); background:var(--glass-2);
+}
+.badge canvas{display:block; width:34px; height:34px;}
+.badge span{font-family:var(--mono); font-size:11.5px; font-weight:600; color:var(--ink);}
+.badge small{font-family:var(--mono); font-size:10.5px; color:var(--ink-3);}
+
+.slid{display:flex; align-items:center; gap:12px; width:100%;}
+.slid>span{
+  font-family:var(--mono); font-size:10px; font-weight:600;
+  letter-spacing:.17em; text-transform:uppercase; color:var(--ink-3); flex:none;
+}
+.slid output{
+  font-family:var(--mono); font-size:12px; color:var(--ink);
+  font-variant-numeric:tabular-nums; flex:none; width:44px; text-align:right;
+}
+input[type="range"]{
+  flex:1; min-width:0; height:22px; -webkit-appearance:none; appearance:none;
+  background:none; cursor:pointer;
+  /* horizontal belongs to the slider; vertical still scrolls the slide */
+  touch-action:pan-y;
+}
+/* A 17px handle is a mouse target, not a finger one. On touch the whole
+   control grows a proper grab area and the handle comes with it. */
+@media (pointer:coarse){
+  input[type="range"]{height:42px;}
+  input[type="range"]::-webkit-slider-runnable-track{height:7px;}
+  input[type="range"]::-moz-range-track{height:7px;}
+  input[type="range"]::-webkit-slider-thumb{width:26px; height:26px; margin-top:-10px;}
+  input[type="range"]::-moz-range-thumb{width:24px; height:24px;}
+  .slid{gap:14px;}
+}
+input[type="range"]::-webkit-slider-runnable-track{height:5px; border-radius:3px; background:var(--hair);}
+input[type="range"]::-moz-range-track{height:5px; border-radius:3px; background:var(--hair);}
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none; margin-top:-6px;
+  width:17px; height:17px; border-radius:50%;
+  background:var(--tab-bg); border:2px solid var(--ground); box-shadow:var(--shade-sm);
+}
+input[type="range"]::-moz-range-thumb{
+  width:15px; height:15px; border-radius:50%; border:2px solid var(--ground);
+  background:var(--tab-bg); box-shadow:var(--shade-sm);
+}
+
+.grounds{display:grid; grid-template-columns:repeat(2,1fr); gap:12px;}
+@media (min-width:820px){.grounds{grid-template-columns:repeat(4,1fr);}}
+.ground{display:flex; flex-direction:column; gap:7px; min-width:0;}
+.ground canvas{
+  display:block; width:100%; height:auto; border-radius:10px;
+  border:1px solid var(--hair-2);
+}
+.ground-h{display:flex; align-items:baseline; justify-content:space-between; gap:8px;}
+.ground b{font-size:12.5px; font-weight:700;}
+.ground i{font-family:var(--mono); font-size:10px; font-style:normal; color:var(--ink-3);}
+
+.tones{display:grid; grid-template-columns:1fr; gap:14px;}
+@media (min-width:700px){.tones{grid-template-columns:repeat(3,1fr);}}
+.tone{display:flex; flex-direction:column; gap:8px;}
+.tone canvas{
+  display:block; width:100%; height:auto; border-radius:11px;
+  border:1px solid var(--hair-2);
+}
+.tone .tone-h{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+.tone b{font-family:var(--mono); font-size:11.5px; font-weight:700;}
+.tone i{font-family:var(--mono); font-size:10.5px; font-style:normal; color:var(--ink-3);}
+.tone p{font-size:12.8px; color:var(--ink-3); line-height:1.5;}
+
+.sizes{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+@media (min-width:760px){.sizes{grid-template-columns:repeat(4,1fr);}}
+.size{
+  display:flex; flex-direction:column; gap:2px;
+  padding:14px 16px; border-radius:13px;
+  border:1px solid var(--hair-2); background:var(--glass-2);
+}
+.size.on{border-color:var(--signal-fill); background:var(--wash);}
+.size b{font-size:17px; font-weight:800; letter-spacing:-.02em;}
+.size span{font-family:var(--mono); font-size:11.5px; color:var(--ink-2); font-variant-numeric:tabular-nums;}
+.size small{font-family:var(--mono); font-size:10px; letter-spacing:.06em; color:var(--ink-3); margin-top:3px;}
+.size.on small{color:var(--signal);}
+
+/* ═══════════════════════ NAV ═══════════════════════ */
+.nav{
+  position:relative; z-index:5; flex:none;
+  align-self:center; margin:0 auto 14px;
+  display:flex; align-items:center; gap:5px;
+  padding:6px 8px; border-radius:999px;
+  background:var(--glass); border:1px solid var(--hair-2);
+  box-shadow:var(--shade), inset 0 1px 0 var(--edge);
+  max-width:calc(100vw - 24px);
+}
+/* Only meaningful when the guide is deployed beside index.html, so JS
+   reveals it rather than leaving a dead link on a standalone copy. */
+.navhome{
+  display:inline-flex; align-items:center; gap:6px; flex:none;
+  height:30px; padding:0 11px 0 9px; margin-right:2px;
+  border-radius:999px; background:var(--wash); color:var(--signal);
+  font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:.04em;
+  text-decoration:none; transition:background .16s ease;
+}
+.navhome:hover{background:var(--signal-wash,var(--wash)); filter:brightness(.96);}
+.navhome[hidden]{display:none;}
+@media (max-width:600px){ .navhome span{display:none;} .navhome{padding:0 9px;} }
+.navbtn{
+  display:grid; place-items:center; width:30px; height:30px; flex:none;
+  border-radius:50%; border:0; background:none; color:var(--ink-2); cursor:pointer;
+  transition:background .16s ease, color .16s ease;
+}
+.navbtn:hover:not(:disabled){background:var(--hair-2); color:var(--ink);}
+.navbtn:disabled{opacity:.28; cursor:default;}
+.dots{display:flex; align-items:center; gap:3px; overflow:hidden;}
+.dot{
+  width:20px; height:26px; padding:0; border:0; background:none; cursor:pointer;
+  display:grid; place-items:center;
+}
+.dot::after{
+  content:""; width:6px; height:6px; border-radius:50%;
+  background:var(--hair); transition:background .18s ease, width .22s ease, border-radius .22s ease;
+}
+.dot:hover::after{background:var(--ink-3);}
+.dot[aria-selected="true"]::after{background:var(--signal-fill); width:16px; border-radius:3px;}
+.count{
+  font-family:var(--mono); font-size:11px; color:var(--ink-3);
+  font-variant-numeric:tabular-nums; padding:0 8px 0 5px; flex:none;
+}
+.count b{color:var(--ink); font-weight:600;}
+/* Below this width the dots are dropped, which leaves the two arrows as the
+   only thing there is to tap — so they get a proper finger-sized target
+   rather than the 30px that suited a pointer. */
+@media (max-width:520px){
+  .dots{display:none;}
+  .nav{padding:5px 6px; gap:2px;}
+  .navbtn{width:44px; height:44px;}
+  .navbtn svg{width:18px; height:18px;}
+  .count{font-size:12px; padding:0 10px 0 6px;}
+}
+
+/* ═══════════════════ PHONE DENSITY ═══════════════════
+   Same content, tighter rhythm: a slide that took three screens on a phone
+   now takes closer to one and a half. */
+@media (max-width:640px){
+  body{font-size:14.5px; line-height:1.58;}
+  h1{font-size:clamp(30px,8.4vw,40px); letter-spacing:-.03em;}
+  h2{font-size:clamp(23px,6.4vw,30px); letter-spacing:-.026em;}
+  .lead{font-size:15.5px; line-height:1.5;}
+  .sub{font-size:12px;}
+  .panel{gap:15px; border-radius:18px;}
+  .two{gap:18px;}
+  .col{gap:13px;}
+  .head{gap:7px;}
+  .spec .row{padding:11px 0;}
+  .note{padding:11px 13px; border-radius:0 10px 10px 0;}
+  .note p{font-size:13.2px;}
+  .fine{font-size:12.8px;}
+  .keys{font-size:13px;}
+  .keys td{padding:9px 0;}
+  .keys td:first-child{width:auto; white-space:normal;}
+  .pipe li{padding-bottom:13px;}
+  .recipe li{padding:12px 0 12px 34px;}
+  .facts{gap:11px; padding-top:14px;}
+  .fact b{font-size:22px;}
+  .cardfig figcaption{gap:10px 18px;}
+  pre code{font-size:11.5px;}
+}
+
+:focus-visible{outline:2px solid var(--signal-fill); outline-offset:3px; border-radius:5px;}
+
+@media (prefers-reduced-motion:reduce){
+  .slide{transition:opacity .01s linear, visibility 0s;}
+  *{animation-duration:.01ms !important; transition-duration:.01ms !important;}
+}
+</style>
+
+<script>
+(function(){
+"use strict";
+
+/* ══════════════════════════════════════════════════════════════
+   Drawing primitives ported from index.html so every figure in
+   this guide is rendered by the same code the tool ships.
+══════════════════════════════════════════════════════════════ */
+var MONO = 'ui-monospace, Menlo, Consolas, monospace';
+var SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+function rr(c,x,y,w,h,r){
+  var rad=Math.min(r,w/2,h/2);
+  c.beginPath();
+  c.moveTo(x+rad,y); c.lineTo(x+w-rad,y); c.arcTo(x+w,y,x+w,y+rad,rad);
+  c.lineTo(x+w,y+h-rad); c.arcTo(x+w,y+h,x+w-rad,y+h,rad);
+  c.lineTo(x+rad,y+h); c.arcTo(x,y+h,x,y+h-rad,rad);
+  c.lineTo(x,y+rad); c.arcTo(x,y,x+rad,y,rad); c.closePath();
+}
+function glass(c,x,y,w,h,r,o){
+  o=o||{};
+  var fill=o.fill||"rgba(252,252,252,0.62)",
+      stroke=o.stroke||"rgba(0,0,0,0.055)",
+      shadow=o.shadow!==false;
+  c.save();
+  if(shadow){c.shadowColor="rgba(0,0,0,0.055)";c.shadowBlur=20;c.shadowOffsetY=5;}
+  rr(c,x,y,w,h,r); c.fillStyle=fill; c.fill(); c.restore();
+  c.save(); rr(c,x,y,w,h,r); c.lineWidth=1.4; c.strokeStyle=stroke; c.stroke(); c.restore();
+}
+/* ---- the tool's own colour derivation, ported verbatim ---- */
+function hexRgb(h){
+  h=String(h).trim().replace(/^#/,"");
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var n=parseInt(h,16);
+  if(h.length!==6||isNaN(n)) return null;
+  return [(n>>16)&255,(n>>8)&255,n&255];
+}
+function mixTo(rgb,t,f){ return rgb.map(function(v,i){ return v+(t[i]-v)*f; }); }
+function srgbLin(c){ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); }
+function relLum(c){ return 0.2126*srgbLin(c[0])+0.7152*srgbLin(c[1])+0.0722*srgbLin(c[2]); }
+function cssc(c,a){
+  var r=Math.round(c[0]),g=Math.round(c[1]),b=Math.round(c[2]);
+  return a===undefined?"rgb("+r+","+g+","+b+")":"rgba("+r+","+g+","+b+","+a+")";
+}
+var BLACK=[0,0,0], WHITE=[255,255,255];
+function buildPalette(hex){
+  var bg=hexRgb(hex)||[245,245,245];
+  var onDark=relLum(bg)<0.42;
+  var ink=onDark?mixTo(bg,WHITE,0.92):mixTo(bg,BLACK,0.885);
+  var inkStrong=onDark?mixTo(bg,WHITE,0.96):mixTo(bg,BLACK,0.918);
+  return {
+    bg:bg, hex:cssc(bg), onDark:onDark,
+    ink:cssc(ink), inkStrong:cssc(inkStrong),
+    idleRgb:mixTo(bg,ink,0.258).map(Math.round).join(","),
+    tabBg:onDark?cssc(mixTo(bg,WHITE,0.90)):"#46443f",
+    tabFg:onDark?cssc(mixTo(bg,BLACK,0.80)):"#ffffff",
+    tabShadow:onDark?"rgba(0,0,0,0.45)":"rgba(0,0,0,0.14)",
+    stroke:onDark?"rgba(255,255,255,0.10)":"rgba(0,0,0,0.055)",
+    strokeSoft:onDark?"rgba(255,255,255,0.09)":"rgba(0,0,0,0.05)",
+    shadow:onDark?"rgba(0,0,0,0.38)":"rgba(0,0,0,0.055)"
+  };
+}
+/* Tone reads its span off the background's own headroom, which is why the
+   default lands on the original 10 up / 32 down. */
+function glassFill(pal,tint,weight){
+  var k=Math.abs(tint)/100, bg=pal.bg, up=tint>=0;
+  function room(u){ return u?255-Math.max(bg[0],bg[1],bg[2]):Math.min(bg[0],bg[1],bg[2]); }
+  var head=room(up);
+  if(head<6 && room(!up)>head){ up=!up; head=room(up); }
+  var d=(up?1:-1)*Math.min(32,head)*k;
+  var a=Math.min(0.95,(0.30+0.55*k)*weight);
+  return cssc([bg[0]+d,bg[1]+d,bg[2]+d],a.toFixed(3));
+}
+function clipCircle(c,cx,cy,r,fn){
+  c.save(); c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.clip(); fn(); c.restore();
+}
+function circleEdge(c,cx,cy,r){
+  c.save();
+  c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2);
+  c.lineWidth=Math.max(1,r*0.07); c.strokeStyle="rgba(255,255,255,0.9)"; c.stroke();
+  c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2);
+  c.lineWidth=1.2; c.strokeStyle="rgba(0,0,0,0.07)"; c.stroke();
+  c.restore();
+}
+function usFlag(c,cx,cy,r){
+  clipCircle(c,cx,cy,r,function(){
+    var x0=cx-r,y0=cy-r,s=r*2,sh=s/13,i,row,col;
+    c.fillStyle="#ffffff"; c.fillRect(x0,y0,s,s);
+    c.fillStyle="#b22234";
+    for(i=0;i<13;i+=2) c.fillRect(x0,y0+i*sh,s,sh);
+    c.fillStyle="#3c3b6e"; c.fillRect(x0,y0,s*0.5,sh*7);
+    c.fillStyle="#ffffff";
+    for(row=0;row<4;row++) for(col=0;col<4;col++){
+      c.beginPath();
+      c.arc(x0+s*0.07+col*s*0.115, y0+sh*0.9+row*sh*1.6, r*0.045,0,Math.PI*2);
+      c.fill();
+    }
+  });
+  circleEdge(c,cx,cy,r);
+}
+function euFlag(c,cx,cy,r){
+  clipCircle(c,cx,cy,r,function(){
+    var i,a;
+    c.fillStyle="#003399"; c.fillRect(cx-r,cy-r,r*2,r*2);
+    c.fillStyle="#ffcc00";
+    for(i=0;i<12;i++){
+      a=(i/12)*Math.PI*2-Math.PI/2;
+      c.beginPath();
+      c.arc(cx+Math.cos(a)*r*0.52, cy+Math.sin(a)*r*0.52, r*0.085,0,Math.PI*2);
+      c.fill();
+    }
+  });
+  circleEdge(c,cx,cy,r);
+}
+function ukFlag(c,cx,cy,r){
+  clipCircle(c,cx,cy,r,function(){
+    var x0=cx-r,y0=cy-r,s=r*2;
+    c.fillStyle="#012169"; c.fillRect(x0,y0,s,s);
+    c.save(); c.lineCap="butt";
+    c.strokeStyle="#ffffff"; c.lineWidth=s*0.2;
+    c.beginPath(); c.moveTo(x0,y0); c.lineTo(x0+s,y0+s); c.moveTo(x0+s,y0); c.lineTo(x0,y0+s); c.stroke();
+    c.strokeStyle="#c8102e"; c.lineWidth=s*0.09;
+    c.beginPath(); c.moveTo(x0,y0); c.lineTo(x0+s,y0+s); c.moveTo(x0+s,y0); c.lineTo(x0,y0+s); c.stroke();
+    c.strokeStyle="#ffffff"; c.lineWidth=s*0.28;
+    c.beginPath(); c.moveTo(cx,y0); c.lineTo(cx,y0+s); c.moveTo(x0,cy); c.lineTo(x0+s,cy); c.stroke();
+    c.strokeStyle="#c8102e"; c.lineWidth=s*0.16;
+    c.beginPath(); c.moveTo(cx,y0); c.lineTo(cx,y0+s); c.moveTo(x0,cy); c.lineTo(x0+s,cy); c.stroke();
+    c.restore();
+  });
+  circleEdge(c,cx,cy,r);
+}
+function bars(c,cx,cy,r,color){
+  c.save(); c.fillStyle=color;
+  var bw=r*0.66,bh=r*0.34,inset=bh*0.34;
+  function trap(x,y){
+    c.beginPath();
+    c.moveTo(x-bw/2,y+bh/2); c.lineTo(x+bw/2,y+bh/2);
+    c.lineTo(x+bw/2-inset,y-bh/2); c.lineTo(x-bw/2+inset,y-bh/2);
+    c.closePath(); c.fill();
+  }
+  trap(cx,cy-r*0.24); trap(cx-bw*0.54,cy+r*0.26); trap(cx+bw*0.54,cy+r*0.26);
+  c.restore();
+}
+function numberBadge(c,cx,cy,r,bg,text){
+  c.save();
+  c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.fillStyle=bg; c.fill();
+  c.fillStyle="#ffffff";
+  var size=r*0.86;
+  c.font="800 "+size+"px "+SANS;
+  var maxW=r*1.5, w=c.measureText(text).width;
+  if(w>maxW){ size=size*(maxW/w); c.font="800 "+size+"px "+SANS; }
+  c.textAlign="center"; c.textBaseline="middle";
+  c.fillText(text,cx,cy+size*0.04);
+  c.restore();
+  circleEdge(c,cx,cy,r);
+}
+function metalBadge(c,cx,cy,r,bg){
+  c.save(); c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.fillStyle=bg; c.fill(); c.restore();
+  bars(c,cx,cy,r,"#ffffff");
+  circleEdge(c,cx,cy,r);
+}
+var X_PATH="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68"+
+           "l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z";
+var xPath2D = (typeof Path2D!=="undefined") ? new Path2D(X_PATH) : null;
+function drawXMark(c,cx,cy,size,color){
+  if(!xPath2D) return;
+  c.save();
+  c.translate(cx-size/2,cy-size/2);
+  c.scale(size/24,size/24);
+  c.fillStyle=color;
+  c.fill(xPath2D);
+  c.restore();
+}
+function drawInstaMark(c,cx,cy,size,color){
+  var s=size*0.94;
+  c.save();
+  c.translate(cx-s/2,cy-s/2);
+  c.scale(s/24,s/24);
+  c.strokeStyle=color; c.fillStyle=color;
+  c.lineWidth=2.1; c.lineJoin="round"; c.lineCap="round";
+  rr(c,2,2,20,20,5.6); c.stroke();
+  c.beginPath(); c.arc(12,12,4.3,0,Math.PI*2); c.stroke();
+  c.beginPath(); c.arc(17.4,6.6,1.25,0,Math.PI*2); c.fill();
+  c.restore();
+}
+function drawMark(c,id,cx,cy,size,color){
+  if(id==="instagram") return drawInstaMark(c,cx,cy,size,color);
+  return drawXMark(c,cx,cy,size,color);
+}
+function drawSymbolIcon(c,id,cx,cy,r){
+  if(id==="NQ") return numberBadge(c,cx,cy,r,"#1f9bf0","100");
+  if(id==="ES") return numberBadge(c,cx,cy,r,"#e03131","500");
+  if(id==="YM") return numberBadge(c,cx,cy,r,"#1f9bf0","30");
+  if(id==="GC") return metalBadge(c,cx,cy,r,"#f2b705");
+  if(id==="SI") return metalBadge(c,cx,cy,r,"#b6b9bd");
+  if(id==="EURUSD"||id==="GBPUSD"){
+    var r2=r*0.72;
+    usFlag(c,cx+r*0.27,cy-r*0.27,r2);
+    (id==="EURUSD"?euFlag:ukFlag)(c,cx-r*0.24,cy+r*0.24,r2);
+  }
+}
+
+var SYMBOLS=[
+  {id:"NQ",label:"NQ",note:"Nasdaq-100"},
+  {id:"ES",label:"ES",note:"S&P 500"},
+  {id:"YM",label:"YM",note:"Dow 30"},
+  {id:"GC",label:"GC",note:"Gold"},
+  {id:"SI",label:"SI",note:"Silver"},
+  {id:"EURUSD",label:"EURUSD",note:"Euro"},
+  {id:"GBPUSD",label:"GBPUSD",note:"Sterling"}
+];
+var SESSIONS=["London","New York","Asia"];
+
+/* ══════════════════════ synthetic chart ══════════════════════ */
+function rng(seed){
+  return function(){
+    seed|=0; seed=seed+0x6D2B79F5|0;
+    var t=Math.imul(seed^seed>>>15,1|seed);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function series(n,seed){
+  var r=rng(seed), out=[], p=100, i, o, cl, hi, lo, drift;
+  for(i=0;i<n;i++){
+    drift=Math.sin(i/13)*0.35+0.06;
+    o=p;
+    cl=o+(r()-0.5)*2.4+drift;
+    hi=Math.max(o,cl)+r()*1.1;
+    lo=Math.min(o,cl)-r()*1.1;
+    out.push({o:o,c:cl,h:hi,l:lo});
+    p=cl;
+  }
+  return out;
+}
+function drawChart(c,x,y,w,h,seed,dense){
+  var n=dense||88, data=series(n,seed), i, d;
+  var hi=-1e9, lo=1e9;
+  for(i=0;i<n;i++){ if(data[i].h>hi)hi=data[i].h; if(data[i].l<lo)lo=data[i].l; }
+  var pad=(hi-lo)*0.14; hi+=pad; lo-=pad;
+  var axisW=w*0.062, plotW=w-axisW;
+  function py(v){ return y+h-((v-lo)/(hi-lo))*h; }
+
+  c.save();
+  c.beginPath(); c.rect(x,y,w,h); c.clip();
+  c.fillStyle="#fdfdfd"; c.fillRect(x,y,w,h);
+
+  /* grid */
+  c.strokeStyle="rgba(0,0,0,0.045)"; c.lineWidth=1;
+  for(i=1;i<6;i++){
+    var gy=Math.round(y+(h/6)*i)+0.5;
+    c.beginPath(); c.moveTo(x,gy); c.lineTo(x+w,gy); c.stroke();
+  }
+  for(i=1;i<9;i++){
+    var gx=Math.round(x+(plotW/9)*i)+0.5;
+    c.beginPath(); c.moveTo(gx,y); c.lineTo(gx,y+h); c.stroke();
+  }
+
+  /* a shaded session window, because that is what the card labels */
+  var s0=x+plotW*0.46, s1=x+plotW*0.70;
+  c.fillStyle="rgba(31,155,240,0.055)"; c.fillRect(s0,y,s1-s0,h);
+  c.strokeStyle="rgba(31,155,240,0.18)"; c.setLineDash([6,6]); c.lineWidth=1.4;
+  c.beginPath(); c.moveTo(s0,y); c.lineTo(s0,y+h); c.moveTo(s1,y); c.lineTo(s1,y+h); c.stroke();
+  c.setLineDash([]);
+
+  /* candles */
+  var step=plotW/n, bw=Math.max(1.5,step*0.58);
+  for(i=0;i<n;i++){
+    d=data[i];
+    var cx=x+step*(i+0.5), up=d.c>=d.o;
+    c.strokeStyle=up?"#26a69a":"#ef5350"; c.fillStyle=up?"#26a69a":"#ef5350";
+    c.lineWidth=Math.max(1,bw*0.16);
+    c.beginPath(); c.moveTo(cx,py(d.h)); c.lineTo(cx,py(d.l)); c.stroke();
+    var top=py(Math.max(d.o,d.c)), bot=py(Math.min(d.o,d.c));
+    c.fillRect(cx-bw/2, top, bw, Math.max(1.4,bot-top));
+  }
+
+  /* last price line + axis strip */
+  var last=data[n-1].c, ly=py(last);
+  c.strokeStyle="rgba(38,166,154,0.55)"; c.setLineDash([5,5]); c.lineWidth=1.4;
+  c.beginPath(); c.moveTo(x,ly); c.lineTo(x+plotW,ly); c.stroke();
+  c.setLineDash([]);
+
+  c.fillStyle="rgba(0,0,0,0.02)"; c.fillRect(x+plotW,y,axisW,h);
+  c.strokeStyle="rgba(0,0,0,0.06)";
+  c.beginPath(); c.moveTo(x+plotW+0.5,y); c.lineTo(x+plotW+0.5,y+h); c.stroke();
+  c.fillStyle="#26a69a";
+  rr(c,x+plotW+2,ly-h*0.024,axisW-4,h*0.048,3); c.fill();
+  c.restore();
+}
+
+/* ══════════════════════ the card ══════════════════════ */
+function drawCard(c,W,H,opt){
+  var u=opt.u===undefined?1:opt.u;
+  var tint=opt.tint===undefined?50:opt.tint;
+  var fade=opt.fade===undefined?100:opt.fade;
+  var session=opt.session||"New York";
+  var P=buildPalette(opt.bg||"#f5f5f5");
+  var symbol=opt.symbol||"NQ";
+  var tf=opt.tf||"H4";
+
+  c.setTransform(1,0,0,1,0,0);
+  c.clearRect(0,0,W,H);
+  c.fillStyle=P.hex; c.fillRect(0,0,W,H);
+  if(opt.chart!==false){
+    if(opt.inset){
+      /* A screenshot placed with room around it, the way Fit leaves it — which
+         is the only way a preview can show the ground colour at all. */
+      var ix=W*0.075, iy=H*0.155, iw=W*0.85, ih=H*0.55;
+      c.save(); rr(c,ix,iy,iw,ih,16); c.clip();
+      drawChart(c,ix,iy,iw,ih,opt.seed||7,46);
+      c.restore();
+    }else{
+      drawChart(c,0,0,W,H,opt.seed||7);
+    }
+  }
+
+  /* session tabs — active pinned to centre */
+  var tabFont="600 "+Math.round(29*u)+"px "+SANS;
+  c.font=tabFont;
+  var tabH=58*u, tabY=40*u, padX=26*u, gap=22*u;
+  var ai=Math.max(0,SESSIONS.indexOf(session));
+  var ordered=[SESSIONS[(ai+2)%3],SESSIONS[ai],SESSIONS[(ai+1)%3]];
+  var tabs=ordered.map(function(label){
+    var tw=c.measureText(label).width;
+    return {label:label,tw:tw,w:tw+padX*2};
+  });
+  tabs[1].x=(W-tabs[1].w)/2;
+  tabs[0].x=tabs[1].x-gap-tabs[0].w;
+  tabs[2].x=tabs[1].x+tabs[1].w+gap;
+
+  tabs.forEach(function(t,i){
+    var active=(i===1), cx2=t.x+t.w/2;
+    if(active){
+      c.save();
+      c.shadowColor=P.tabShadow; c.shadowBlur=16; c.shadowOffsetY=4;
+      rr(c,t.x,tabY,t.w,tabH,tabH/2); c.fillStyle=P.tabBg; c.fill();
+      c.restore();
+    }
+    c.font=tabFont; c.textAlign="center"; c.textBaseline="middle";
+    if(active){ c.fillStyle=P.tabFg; }
+    else{
+      var left=cx2-t.tw/2, f=fade/100;
+      var a0=(1-f).toFixed(3), a1=(1-0.45*f).toFixed(3);
+      var gr=c.createLinearGradient(left,0,left+t.tw,0);
+      if(i===0){
+        gr.addColorStop(0,"rgba("+P.idleRgb+","+a0+")");
+        gr.addColorStop(0.45,"rgba("+P.idleRgb+","+a1+")");
+        gr.addColorStop(1,"rgba("+P.idleRgb+",1)");
+      }else{
+        gr.addColorStop(0,"rgba("+P.idleRgb+",1)");
+        gr.addColorStop(0.55,"rgba("+P.idleRgb+","+a1+")");
+        gr.addColorStop(1,"rgba("+P.idleRgb+","+a0+")");
+      }
+      c.fillStyle=gr;
+    }
+    c.fillText(t.label,cx2,tabY+tabH/2+1*u);
+  });
+
+  /* bottom rail */
+  var iconR=32*u, railPad=15*u;
+  var barH=iconR*2+railPad*2;
+  var barY=H-16-barH, barX=16;
+  glass(c,barX,barY,W-32,barH,barH/2,{fill:glassFill(P,tint,1),stroke:P.strokeSoft});
+
+  var cy=barY+barH/2;
+  var iconCX=barX+railPad+iconR;
+  var sym=SYMBOLS.filter(function(s){return s.id===symbol;})[0]||SYMBOLS[0];
+  var symFont="600 "+Math.round(28*u)+"px "+SANS;
+  c.font=symFont;
+  var tw=c.measureText(sym.label).width;
+  var capH=58*u, capX=iconCX+iconR*0.42, textX=iconCX+iconR+26*u;
+  glass(c,capX,cy-capH/2,textX-capX+tw+30*u,capH,capH/2,
+        {fill:glassFill(P,tint,1.25),stroke:P.stroke,shadow:false});
+  c.font=symFont; c.fillStyle=P.ink;
+  c.textAlign="left"; c.textBaseline="middle";
+  c.fillText(sym.label,textX,cy+1*u);
+  drawSymbolIcon(c,sym.id,iconCX,cy,iconR);
+
+  /* wordmark */
+  if(opt.mark!==false){
+    var handle=opt.handle===undefined?"YSERTRADES":opt.handle;
+    var markSize=27*u, markText=handle?("/ "+handle):"";
+    c.save();
+    if("letterSpacing" in c) c.letterSpacing=(1.2*u)+"px";
+    c.font="400 "+Math.round(26*u)+"px "+SANS;
+    var mtw=markText?c.measureText(markText).width:0, mgap=markText?14*u:0;
+    var gx=W/2-(markSize+mgap+mtw)/2;
+    drawMark(c,opt.logo||"x",gx+markSize/2,cy,markSize,P.ink);
+    if(markText){
+      c.fillStyle=P.ink; c.textAlign="left"; c.textBaseline="middle";
+      c.fillText(markText,gx+markSize+mgap,cy+1*u);
+    }
+    if("letterSpacing" in c) c.letterSpacing="0px";
+    c.restore();
+  }
+
+  /* timeframe pill */
+  var tfFont="700 "+Math.round(30*u)+"px "+SANS;
+  c.font=tfFont;
+  var tfw=c.measureText(tf).width;
+  var tfH=62*u, tfW=Math.max(104*u,tfw+56*u), tfY=barY-20*u-tfH;
+  glass(c,(W-tfW)/2,tfY,tfW,tfH,22*u,{fill:glassFill(P,tint,1.05),stroke:P.strokeSoft});
+  c.font=tfFont; c.fillStyle=P.inkStrong;
+  c.textAlign="center"; c.textBaseline="middle";
+  c.fillText(tf,W/2,tfY+tfH/2+1*u);
+}
+
+/* One visual world, so the figures never branch on a viewer theme. */
+function dark(){ return true; }
+
+/* ══════════════════════ figures ══════════════════════ */
+var heroState={symbol:"NQ",session:"New York",tf:"H4",tint:50,fade:100,seed:7,
+               logo:"x",handle:"YSERTRADES"};
+var hero=document.getElementById("hero");
+var heroCtx=hero.getContext("2d");
+function paintHero(){ drawCard(heroCtx,1920,1080,heroState); }
+
+function buildHeroChips(){
+  var symBox=document.getElementById("heroSym");
+  var sesBox=document.getElementById("heroSess");
+  SYMBOLS.forEach(function(s){
+    var b=document.createElement("button");
+    b.type="button"; b.className="chip"; b.textContent=s.label;
+    b.setAttribute("aria-pressed", heroState.symbol===s.id ? "true":"false");
+    b.addEventListener("click",function(){
+      heroState.symbol=s.id;
+      symBox.querySelectorAll(".chip").forEach(function(o){o.setAttribute("aria-pressed","false");});
+      b.setAttribute("aria-pressed","true");
+      paintHero();
+    });
+    symBox.appendChild(b);
+  });
+  SESSIONS.forEach(function(s){
+    var b=document.createElement("button");
+    b.type="button"; b.className="chip"; b.textContent=s;
+    b.setAttribute("aria-pressed", heroState.session===s ? "true":"false");
+    b.addEventListener("click",function(){
+      heroState.session=s;
+      sesBox.querySelectorAll(".chip").forEach(function(o){o.setAttribute("aria-pressed","false");});
+      b.setAttribute("aria-pressed","true");
+      paintHero();
+    });
+    sesBox.appendChild(b);
+  });
+  var logoBox=document.getElementById("heroLogo");
+  [{id:"x",label:"X"},{id:"instagram",label:"Instagram"}].forEach(function(o){
+    var b=document.createElement("button");
+    b.type="button"; b.className="chip"; b.textContent=o.label;
+    b.setAttribute("aria-pressed", heroState.logo===o.id ? "true":"false");
+    b.addEventListener("click",function(){
+      heroState.logo=o.id;
+      logoBox.querySelectorAll(".chip").forEach(function(c){c.setAttribute("aria-pressed","false");});
+      b.setAttribute("aria-pressed","true");
+      paintHero();
+    });
+    logoBox.appendChild(b);
+  });
+}
+
+/* badge gallery */
+function buildBadges(){
+  var box=document.getElementById("badges");
+  SYMBOLS.forEach(function(s){
+    var wrap=document.createElement("div"); wrap.className="badge";
+    var cv=document.createElement("canvas");
+    var dpr=Math.min(2,window.devicePixelRatio||1);
+    cv.width=34*dpr; cv.height=34*dpr;
+    var c=cv.getContext("2d"); c.setTransform(dpr,0,0,dpr,0,0);
+    drawSymbolIcon(c,s.id,17,17,15);
+    var name=document.createElement("span"); name.textContent=s.label;
+    var note=document.createElement("small"); note.textContent=s.note;
+    wrap.appendChild(cv); wrap.appendChild(name); wrap.appendChild(note);
+    box.appendChild(wrap);
+  });
+}
+
+/* Trim diagram. Both panels show one identical source chart — the only
+   difference is how much of its right edge is read. That is exactly what
+   the Trim control does, so the figure demonstrates the real behaviour
+   rather than a zoom that merely looks similar. */
+var SRC_W=980, SRC_H=420, STEP=26;
+var SRC_FULL=949;            // cuts the last candle roughly in half
+var SRC_TRIM=915;            // 34 px off the right — that candle is gone
+
+function buildTrimSource(){
+  var off=document.createElement("canvas");
+  off.width=SRC_W; off.height=SRC_H;
+  var c=off.getContext("2d");
+  var n=Math.ceil(SRC_W/STEP), data=series(n,23), i, d;
+  var hi=-1e9, lo=1e9;
+  for(i=0;i<n;i++){ if(data[i].h>hi)hi=data[i].h; if(data[i].l<lo)lo=data[i].l; }
+  var pad=(hi-lo)*0.16; hi+=pad; lo-=pad;
+  function py(v){ return SRC_H-((v-lo)/(hi-lo))*SRC_H; }
+
+  c.fillStyle="#fdfdfd"; c.fillRect(0,0,SRC_W,SRC_H);
+  c.strokeStyle="rgba(0,0,0,0.05)"; c.lineWidth=1;
+  for(i=1;i<5;i++){
+    var gy=Math.round((SRC_H/5)*i)+0.5;
+    c.beginPath(); c.moveTo(0,gy); c.lineTo(SRC_W,gy); c.stroke();
+  }
+  var bw=STEP*0.56;
+  for(i=0;i<n;i++){
+    d=data[i];
+    var cx=STEP*(i+0.5), up=d.c>=d.o;
+    c.strokeStyle=up?"#26a69a":"#ef5350"; c.fillStyle=up?"#26a69a":"#ef5350";
+    c.lineWidth=Math.max(1,bw*0.16);
+    c.beginPath(); c.moveTo(cx,py(d.h)); c.lineTo(cx,py(d.l)); c.stroke();
+    var t=py(Math.max(d.o,d.c)), b=py(Math.min(d.o,d.c));
+    c.fillRect(cx-bw/2,t,bw,Math.max(1.5,b-t));
+  }
+  return off;
+}
+var trimSrc=null;
+
+function paintTrim(){
+  var cv=document.getElementById("trim"), c=cv.getContext("2d");
+  var W=880,H=380, gapX=36, panW=(W-gapX)/2, panH=H-46, panY=26;
+  if(!trimSrc) trimSrc=buildTrimSource();
+  c.setTransform(1,0,0,1,0,0);
+  c.clearRect(0,0,W,H);
+  var d=dark();
+  var lab=d?"rgba(233,237,244,0.7)":"rgba(27,26,22,0.66)";
+
+  function panel(x,readW,title){
+    c.save();
+    c.beginPath(); rr(c,x,panY,panW,panH,10); c.clip();
+    c.imageSmoothingEnabled=true; c.imageSmoothingQuality="high";
+    /* read [0..readW] of the source and re-fit it to the same frame */
+    c.drawImage(trimSrc,0,0,readW,SRC_H,x,panY,panW,panH);
+    c.restore();
+    c.save(); rr(c,x,panY,panW,panH,10);
+    c.lineWidth=1.4; c.strokeStyle=d?"rgba(255,255,255,0.16)":"rgba(0,0,0,0.1)"; c.stroke(); c.restore();
+    c.fillStyle=lab;
+    c.font="600 11.5px "+MONO; c.textAlign="left"; c.textBaseline="alphabetic";
+    c.fillText(title,x+2,16);
+  }
+  panel(0,SRC_FULL,"TRIM RIGHT 0");
+  panel(panW+gapX,SRC_TRIM,"TRIM RIGHT 34");
+
+  /* call out the clipped candle on the left panel */
+  c.save();
+  c.strokeStyle="#e03131"; c.lineWidth=1.8; c.setLineDash([5,4]);
+  var mx=panW-7;
+  c.beginPath(); c.moveTo(mx,panY); c.lineTo(mx,panY+panH); c.stroke();
+  c.setLineDash([]);
+  c.fillStyle="#e03131"; c.font="600 11px "+MONO; c.textAlign="right";
+  c.fillText("half candle", mx-8, 16);
+  c.restore();
+}
+
+/* the two marks over a band of chart, proving the outline is see-through */
+function paintMarks(){
+  var cv=document.getElementById("marks"), c=cv.getContext("2d");
+  var W=880,H=300;
+  c.setTransform(1,0,0,1,0,0);
+  c.clearRect(0,0,W,H);
+  var d=dark();
+  c.fillStyle=d?"rgba(255,255,255,0.03)":"#f5f5f5";
+  c.fillRect(0,0,W,H);
+
+  var ink=d?"#e9edf4":"#1c1c1c";
+  drawXMark(c,238,142,132,ink);
+  drawInstaMark(c,642,142,132,ink);
+
+  c.fillStyle=d?"rgba(233,237,244,0.62)":"rgba(27,26,22,0.6)";
+  c.font="600 12px "+MONO; c.textAlign="center"; c.textBaseline="alphabetic";
+  c.fillText("X — FILLED",238,272);
+  c.fillText("INSTAGRAM — OUTLINED",642,272);
+}
+
+/* session tab strip */
+var tabsCv=document.getElementById("tabs"), tabsCtx=tabsCv.getContext("2d");
+var fadeVal=100;
+function paintTabs(){
+  var c=tabsCtx, W=900, H=150;
+  c.setTransform(1,0,0,1,0,0);
+  c.clearRect(0,0,W,H);
+  var d=dark();
+  c.fillStyle=d?"rgba(255,255,255,0.03)":"#f5f5f5";
+  c.fillRect(0,0,W,H);
+  var u=1.35;
+  var tabFont="600 "+Math.round(29*u)+"px "+SANS;
+  c.font=tabFont;
+  var tabH=58*u, tabY=(H-tabH)/2, padX=26*u, gap=22*u;
+  var ordered=["London","New York","Asia"];
+  var tabs=ordered.map(function(l){ var tw=c.measureText(l).width; return {label:l,tw:tw,w:tw+padX*2}; });
+  tabs[1].x=(W-tabs[1].w)/2;
+  tabs[0].x=tabs[1].x-gap-tabs[0].w;
+  tabs[2].x=tabs[1].x+tabs[1].w+gap;
+  tabs.forEach(function(t,i){
+    var active=(i===1), cx2=t.x+t.w/2;
+    if(active){
+      c.save();
+      c.shadowColor="rgba(0,0,0,0.14)"; c.shadowBlur=16; c.shadowOffsetY=4;
+      rr(c,t.x,tabY,t.w,tabH,tabH/2); c.fillStyle="#46443f"; c.fill();
+      c.restore();
+    }
+    c.font=tabFont; c.textAlign="center"; c.textBaseline="middle";
+    if(active){ c.fillStyle="#ffffff"; }
+    else{
+      var left=cx2-t.tw/2, f=fadeVal/100;
+      var a0=(1-f).toFixed(3), a1=(1-0.45*f).toFixed(3);
+      var base=d?"225,232,242":"189,189,189";
+      var gr=c.createLinearGradient(left,0,left+t.tw,0);
+      if(i===0){
+        gr.addColorStop(0,"rgba("+base+","+a0+")");
+        gr.addColorStop(0.45,"rgba("+base+","+a1+")");
+        gr.addColorStop(1,"rgba("+base+",1)");
+      }else{
+        gr.addColorStop(0,"rgba("+base+",1)");
+        gr.addColorStop(0.55,"rgba("+base+","+a1+")");
+        gr.addColorStop(1,"rgba("+base+","+a0+")");
+      }
+      c.fillStyle=gr;
+    }
+    c.fillText(t.label,cx2,tabY+tabH/2+1*u);
+  });
+}
+var fadeInput=document.getElementById("fade"), fadeOut=document.getElementById("fadeOut");
+fadeInput.addEventListener("input",function(){
+  fadeVal=+fadeInput.value;
+  fadeOut.textContent=fadeVal+"%";
+  paintTabs();
+});
+
+/* the same card on four grounds, every colour derived rather than restyled */
+var GROUNDS=[
+  {hex:"#f5f5f5",name:"Default"},
+  {hex:"#efe9df",name:"Warm linen"},
+  {hex:"#e8eef4",name:"Cool mist"},
+  {hex:"#0f1116",name:"Midnight"}
+];
+function buildGrounds(){
+  var box=document.getElementById("grounds");
+  GROUNDS.forEach(function(o){
+    var w=document.createElement("div"); w.className="ground";
+    var cv=document.createElement("canvas"); cv.width=520; cv.height=293;
+    cv.setAttribute("aria-label","The card rendered on "+o.name);
+    var cap=document.createElement("div"); cap.className="ground-h";
+    var nm=document.createElement("b"); nm.textContent=o.name;
+    var hx=document.createElement("i"); hx.textContent=o.hex.toUpperCase();
+    cap.appendChild(nm); cap.appendChild(hx);
+    w.appendChild(cv); w.appendChild(cap);
+    box.appendChild(w);
+
+    var off=document.createElement("canvas"); off.width=1920; off.height=1080;
+    drawCard(off.getContext("2d"),1920,1080,{
+      bg:o.hex, tint:50, symbol:"NQ", session:"New York", tf:"H4", seed:19, u:1.3,
+      inset:true
+    });
+    var c=cv.getContext("2d");
+    c.imageSmoothingEnabled=true; c.imageSmoothingQuality="high";
+    c.drawImage(off,0,0,1920,1080,0,0,520,293);
+    off.width=0; off.height=0;
+  });
+}
+
+/* tone samples — the rail drawn at three tone values */
+var TONES=[
+  {t:-100,name:"−100 darker",  copy:"Panels sink below the background into a soft grey block. The move for bright, near-white charts."},
+  {t:0,    name:"0 flat",      copy:"Panels take the background exactly. Furniture reads as type floating on the card, nothing behind it."},
+  {t:100,  name:"+100 lighter",copy:"Panels lift toward white and gain opacity. The move for dark or busy charts."}
+];
+function buildTones(){
+  var box=document.getElementById("tones");
+  TONES.forEach(function(o){
+    var w=document.createElement("div"); w.className="tone";
+    var h=document.createElement("div"); h.className="tone-h";
+    var b=document.createElement("b"); b.textContent=o.name;
+    h.appendChild(b);
+    var cv=document.createElement("canvas"); cv.width=520; cv.height=290;
+    cv.setAttribute("aria-label","Card overlay rendered at tone "+o.t);
+    var p=document.createElement("p"); p.textContent=o.copy;
+    w.appendChild(h); w.appendChild(cv); w.appendChild(p);
+    box.appendChild(w);
+
+    var c=cv.getContext("2d");
+    /* render the real card at 1920x1080 then scale it into the tile */
+    var off=document.createElement("canvas"); off.width=1920; off.height=1080;
+    drawCard(off.getContext("2d"),1920,1080,{
+      tint:o.t, symbol:"ES", session:"London", tf:"M15", seed:41, u:1.25, bg:"#f5f5f5"
+    });
+    c.imageSmoothingEnabled=true; c.imageSmoothingQuality="high";
+    c.drawImage(off,0,0,1920,1080,0,0,520,290);
+    off.width=0; off.height=0;
+  });
+}
+
+/* ══════════════════════ deck navigation ══════════════════════ */
+var slides=[].slice.call(document.querySelectorAll(".slide"));
+var dotsBox=document.getElementById("dots");
+var prevBtn=document.getElementById("prev"), nextBtn=document.getElementById("next");
+var curOut=document.getElementById("cur"), totOut=document.getElementById("tot");
+var idx=0;
+totOut.textContent=slides.length;
+
+slides.forEach(function(s,i){
+  var b=document.createElement("button");
+  b.type="button"; b.className="dot"; b.setAttribute("role","tab");
+  b.setAttribute("aria-selected", i===0?"true":"false");
+  b.setAttribute("aria-label", (i+1)+". "+(s.dataset.title||""));
+  b.title=s.dataset.title||"";
+  b.addEventListener("click",function(){ go(i); });
+  dotsBox.appendChild(b);
+});
+var dots=[].slice.call(dotsBox.children);
+
+function go(n){
+  n=Math.max(0,Math.min(slides.length-1,n));
+  if(n===idx && slides[idx].classList.contains("on")) return;
+
+  /* The outgoing slide goes at once. Nothing is held behind the new card, so
+     there is nothing to ghost through it. */
+  slides[idx].classList.remove("on");
+  dots[idx].setAttribute("aria-selected","false");
+
+  idx=n;
+  slides[idx].classList.add("on");
+  slides[idx].scrollTop=0;
+  dots[idx].setAttribute("aria-selected","true");
+  curOut.textContent=idx+1;
+  prevBtn.disabled=(idx===0);
+  nextBtn.disabled=(idx===slides.length-1);
+}
+prevBtn.addEventListener("click",function(){ go(idx-1); });
+nextBtn.addEventListener("click",function(){ go(idx+1); });
+
+window.addEventListener("keydown",function(e){
+  var tag=(e.target.tagName||"").toLowerCase();
+  if(tag==="input"||tag==="textarea"||tag==="select") return;
+  if(e.key==="ArrowRight"||e.key==="PageDown"){ go(idx+1); e.preventDefault(); }
+  else if(e.key==="ArrowLeft"||e.key==="PageUp"){ go(idx-1); e.preventDefault(); }
+  else if(e.key==="Home"){ go(0); e.preventDefault(); }
+  else if(e.key==="End"){ go(slides.length-1); e.preventDefault(); }
+});
+
+/* Swipe. Listening on the document means a drag anywhere counts, so dragging
+   the fade slider used to read as a swipe and turn the page instead of moving
+   the handle. A gesture that starts on a control belongs to that control. */
+var SWIPE_IGNORE="input,button,a,select,textarea,label,.nav,[role=tab]";
+var sx=0, sy=0, tracking=false;
+document.addEventListener("pointerdown",function(e){
+  if(e.pointerType==="mouse") return;
+  var t=e.target;
+  if(t && t.closest && t.closest(SWIPE_IGNORE)){ tracking=false; return; }
+  sx=e.clientX; sy=e.clientY; tracking=true;
+});
+document.addEventListener("pointercancel",function(){ tracking=false; });
+document.addEventListener("pointerup",function(e){
+  if(!tracking) return;
+  tracking=false;
+  var dx=e.clientX-sx, dy=e.clientY-sy;
+  if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.6) go(idx+(dx<0?1:-1));
+});
+
+/* ══════════════════════ boot ══════════════════════ */
+function repaintAll(){
+  paintHero();
+  paintTrim();
+  paintTabs();
+  paintMarks();
+}
+/* Inside the editor's guide panel there is already a Close button, and
+   following a link would nest the editor inside its own overlay — so the back
+   link is for the standalone page only. */
+var inFrame=(function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
+if(!inFrame && (/(^|\/)guide\.html?$/i.test(location.pathname) || location.protocol==="file:")){
+  document.getElementById("home").hidden=false;
+}
+/* Esc pressed in here cannot reach the editor's document, so hand it back. */
+if(inFrame){
+  window.addEventListener("keydown",function(e){
+    if(e.key==="Escape"){
+      try{ parent.postMessage({type:"guide:close"},"*"); }catch(err){}
+    }
+  });
+}
+
+buildHeroChips();
+buildBadges();
+buildGrounds();
+buildTones();
+go(0);
+repaintAll();
+
+
+/* the canvases measure text, so redraw once webfonts settle */
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(repaintAll).catch(function(){});
+}
+})();
+</script>
+
+</body>
+</html>

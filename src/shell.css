@@ -1,0 +1,142 @@
+/* ===========================================================================
+   Shell chrome: the floating glass tab pill, the panes it switches between,
+   and the background layer that gives its blur something to act on.
+   =========================================================================== */
+
+:root {
+  --tabbar-h: 56px;
+  --tabbar-gap: 14px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --tabbar-reserve: calc(var(--tabbar-h) + var(--tabbar-gap) * 2 + var(--safe-b));
+}
+
+/* ---------------------------------------------------------------------------
+   backdrop-filter over a flat colour samples a constant, which is
+   mathematically a no-op — the bar would read as a plain dark chip at rest.
+   Two very soft radials (both under 4% white) fix that. At these values you do
+   not perceive a gradient; you perceive depth the moment something translucent
+   moves across it. One sits where the bar does.
+
+   A scrim behind the bar was the obvious alternative and is wrong: it lands
+   *in* the backdrop, so the bar would blur an opaque surface and go flat again.
+--------------------------------------------------------------------------- */
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(130% 85% at 50%   0%, rgba(255,255,255,0.035), rgba(255,255,255,0) 62%),
+    radial-gradient(120% 60% at 50% 100%, rgba(255,255,255,0.030), rgba(255,255,255,0) 70%);
+}
+
+/* --------------------------------- dock ---------------------------------- */
+.tabbar-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-gap) + var(--safe-b));
+  display: flex;
+  justify-content: center;
+  pointer-events: none;   /* only the pill itself is interactive */
+  z-index: 120;           /* .main-panel is a z-index:20 stacking context, so
+                             .dropdown-menu's z-index:50 is local to it and its
+                             effective root layer is 20. 120 is headroom. */
+}
+
+/* ---------------------------------- bar ----------------------------------- */
+.tabbar {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--tabbar-h);
+  padding: 6px;
+  border-radius: 999px;
+
+  /* Two deliberate deviations from the app's .glass token: 0.2 -> 0.32 because
+     a bar floating over arbitrary content needs more self-separation than a
+     panel sitting in the flow, and blur 7 -> 16 because 7px is tuned for a
+     static panel and is imperceptible on an overlay. saturate() costs nothing
+     and is what makes the coloured pills bloom under the bar rather than
+     smear. Everything else stays in-family. */
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  border: 0.4px solid rgba(176, 176, 176, 0.14);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45),
+              inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  transition: transform 0.26s cubic-bezier(.22, .8, .3, 1), opacity 0.2s ease;
+  will-change: transform;
+}
+
+.tabbar-hidden {
+  transform: translateY(calc(var(--tabbar-h) + var(--tabbar-gap) + var(--safe-b) + 14px));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tabbar-btn {
+  width: 48px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.tabbar-btn:active { transform: scale(0.94); }
+.tabbar-btn-active {
+  background: rgba(10, 132, 255, 0.16);   /* the accent the app already uses */
+  color: rgba(255, 255, 255, 0.95);
+}
+.tabbar-btn:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.9);
+  outline-offset: 2px;
+}
+
+/* --------------------------------- panes ---------------------------------- */
+/* Reserves room for the bar rather than running underneath it. That keeps the
+   editor's bottom controls reachable and, on the guide, keeps its own bottom
+   nav pill clear of ours — which is why neither vendored file needed editing.
+   Safe-area insets do not cross into an iframe, so they are applied here. */
+.pane {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: transparent;   /* .bg-layer shows through the reserve strip, so
+                                the bar looks the same on every tab */
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top, 0px)
+           env(safe-area-inset-right, 0px)
+           var(--tabbar-reserve)
+           env(safe-area-inset-left, 0px);
+  opacity: 1;
+  transition: opacity 0.18s ease;
+}
+
+/* Never display:none — that reloads the iframe in some WebKit versions and
+   would throw away the user's loaded screenshot. */
+.pane-hidden {
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.pane-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabbar, .pane, .tabbar-btn { transition: none; }
+}

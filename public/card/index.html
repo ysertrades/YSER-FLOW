@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trades card editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Loaded non-blockingly. A parser-inserted <script> waits on any pending
+     stylesheet, so fetching this the normal way puts a third-party CDN on the
+     critical path: the editor stays inert until Google answers. Measured at 13s
+     on a slow link, and it would hang outright behind a CSP that blocks the
+     host. media="print" keeps it out of the way, then it flips to all on load.
+     Nothing else needs to change — draw() already re-runs on document.fonts.ready,
+     so the canvas repaints itself the moment the real faces arrive. -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{min-height:100vh;width:100%;overflow-x:hidden;background:#eeeeee;color:#1a1a1a;
+  font-family:Poppins,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1400px;margin:0 auto;padding:14px}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:14px}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.sub{margin:2px 0 0;font-size:12.5px;color:#767676;max-width:44ch}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;
+  border:1px solid #d8d8d8;background:#fff;color:#222;font:500 13px/1 Poppins,sans-serif;cursor:pointer;white-space:nowrap}
+.btn:active{background:#f2f2f2}
+.btn.go{background:#171717;border-color:#171717;color:#fff}
+.btn.go:active{background:#000}
+.btn:disabled{opacity:.35;cursor:default}
+/* Guide sits apart from the two working buttons: tinted, never black, so it
+   reads as a way out of the tool rather than a step inside it. */
+.btn.guide{border-color:#c6e2f8;background:#f4faff;color:#0e6bb8;text-decoration:none}
+.btn.guide:active{background:#e6f3fe}
+.guide-ico{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:7px;background:#1f9bf0;color:#fff;margin-left:-4px;flex:none}
+.grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+.stage{position:relative;width:100%;margin:0 auto;border-radius:12px;overflow:hidden;background:#fff;border:1px solid #e4e4e4}
+canvas{display:block;width:100%;height:auto;touch-action:none}
+.drop{position:absolute;inset:0;display:grid;place-items:center;padding:18px;text-align:center;pointer-events:none}
+.drop p{margin:0;font-size:13.5px;font-weight:500;color:#767676}
+.drop small{display:block;margin-top:3px;font-size:12px;color:#a0a0a0;font-weight:400}
+.tip{margin:8px 2px 0;font-size:11.5px;line-height:1.5;color:#8a8a8a}
+.err{margin-top:8px;padding:8px 10px;border-radius:9px;background:#fef2f2;border:1px solid #fbcaca;color:#b3261e;font-size:12.5px;display:none}
+.panel{background:#fff;border:1px solid #e4e4e4;border-radius:12px;padding:14px;min-width:0}
+.sec{border-top:1px solid #ededed;margin-top:14px;padding-top:14px}
+.sec:first-child{border-top:0;margin-top:0;padding-top:0}
+.sech{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:9px}
+.lab{margin:0;font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:#8e8e8e}
+.hint{font-size:11px;color:#a8a8a8;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cap{margin:0 0 6px;font-size:11px;color:#a8a8a8}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{height:34px;padding:0 12px;border-radius:9px;border:1px solid #e2e2e2;background:#fff;color:#3d3d3d;
+  font:500 12.5px/1 Poppins,sans-serif;cursor:pointer;white-space:nowrap}
+.chip:active{background:#f2f2f2}
+.chip[data-on="1"]{background:#171717;border-color:#171717;color:#fff}
+.mini{height:34px;min-width:34px;padding:0 8px;border-radius:9px;border:1px solid #e2e2e2;background:#fff;color:#5a5a5a;
+  font:500 12px/1 Poppins,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
+.mini:active{background:#f2f2f2}
+.field{height:34px;width:100%;border-radius:9px;border:1px solid #e2e2e2;background:#fff;padding:0 10px;
+  font:400 13px/1 Poppins,sans-serif;color:#222}
+.field:focus{outline:none;border-color:#9a9a9a}
+.num{height:34px;width:62px;border-radius:9px;border:1px solid #e2e2e2;background:#fff;padding:0 8px;
+  font:400 12.5px/1 Poppins,sans-serif;color:#222;font-variant-numeric:tabular-nums}
+.num:focus{outline:none;border-color:#9a9a9a}
+.edge{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.edge>span{width:46px;font-size:12px;color:#767676;flex:none}
+.note{margin:8px 0 0;font-size:11px;line-height:1.5;color:#a8a8a8}
+.check{display:flex;align-items:center;gap:8px;margin-top:11px;font-size:12.5px;color:#3d3d3d;cursor:pointer;user-select:none}
+.check input{width:16px;height:16px;accent-color:#171717}
+/* Swatches share the chip's 34px height so the background row lines up with
+   every other control row in the panel. */
+.sw{width:34px;height:34px;padding:0;border-radius:9px;border:1px solid #dcdcdc;cursor:pointer;
+  position:relative;flex:none;background-clip:padding-box}
+.sw[data-on="1"]{border-color:#171717;box-shadow:0 0 0 2px #fff inset,0 0 0 1px #171717}
+/* A spectrum ring around the live colour, so the custom picker never reads as
+   an empty square the way a plain swatch does at pale values. */
+.pick{width:34px;height:34px;border-radius:9px;overflow:hidden;border:0;padding:2.5px;
+  display:inline-flex;flex:none;cursor:pointer;
+  background:conic-gradient(from .25turn,#f2b705,#e03131,#8b5cf6,#1f9bf0,#26a69a,#f2b705)}
+.pick input[type=color]{width:100%;height:100%;padding:0;border:0;background:none;cursor:pointer;border-radius:6.5px}
+.pick input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.pick input[type=color]::-webkit-color-swatch{border:none;border-radius:6.5px}
+.pick input[type=color]::-moz-color-swatch{border:none;border-radius:6.5px}
+.hexf{width:96px;flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;text-transform:uppercase}
+.hexf.bad{border-color:#e8a3a3;background:#fff8f8}
+.slider{position:relative;height:34px;display:flex;align-items:center;touch-action:none;cursor:pointer;user-select:none;width:100%}
+.slider[data-off="1"]{opacity:.4;cursor:default}
+.track{position:absolute;left:0;right:0;height:6px;border-radius:3px;background:#e6e6e6}
+.fill{position:absolute;left:0;height:6px;border-radius:3px;background:#171717}
+.thumb{position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid #cfcfcf;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+/* A 20px handle is a mouse target. On touch the whole control grows. */
+@media (pointer:coarse){
+  .slider{height:44px}
+  .track,.fill{height:7px;border-radius:4px}
+  .thumb{width:26px;height:26px}
+}
+body.embedded .wrap{padding:10px}
+body.embedded .sub{display:none}
+body.embedded h1{font-size:15px}
+body.embedded .head{margin-bottom:10px}
+@media (min-width:1024px){ body.embedded .stage{max-width:calc((100vh - 190px) * 1.7778)} }
+.result{display:none;margin-top:8px;padding:10px;border-radius:10px;background:#fff;border:1px solid #e4e4e4;
+  align-items:center;gap:10px;flex-wrap:wrap}
+.result.on{display:flex}
+.result img{width:64px;height:36px;object-fit:cover;border-radius:5px;border:1px solid #e8e8e8;background:#f5f5f5}
+.result .meta{font-size:12px;color:#767676;flex:1;min-width:120px}
+.result .meta b{display:block;color:#222;font-weight:600;font-size:12.5px}
+.danger:active{background:#fff5f5;border-color:#f0b4b4;color:#b3261e}
+/* ---------------------------- guide sheet -------------------------------
+   Embedded in Whop a new tab is either blocked by the frame sandbox or throws
+   the reader out of the app view, so the guide opens as a panel inside the
+   editor. It stays a separate document in an iframe: the guide's stylesheet
+   uses .panel, .row, .chip, .note, .head and .field, all of which this page
+   already defines, so a shared document would have them fighting.
+-------------------------------------------------------------------------*/
+.sheet{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:#eeece6;
+  opacity:0;visibility:hidden;transform:translateY(10px);
+  transition:opacity .22s ease,transform .22s cubic-bezier(.22,.8,.3,1),visibility 0s .22s}
+.sheet.on{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+.sheet-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:none;
+  padding:9px 11px;background:#fff;border-bottom:1px solid #e4e4e4}
+.sheet-title{display:inline-flex;align-items:center;gap:8px;min-width:0;
+  font:600 13px/1 Poppins,sans-serif;color:#222}
+.sheet-title span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet-acts{display:flex;gap:6px;flex:none}
+.sheet-frame{flex:1;width:100%;border:0;display:block;background:#eeece6}
+@media (prefers-reduced-motion:reduce){ .sheet{transition:opacity .01s linear,visibility 0s} }
+@media (min-width:1024px){
+  .wrap{padding:20px}
+  .grid{grid-template-columns:minmax(0,1fr) 330px;gap:18px}
+  .stage{max-width:calc((100vh - 250px) * 1.7778)}
+  .panel{position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1>Trades card editor</h1>
+      <p class="sub">Place a chart screenshot, export at 1920 × 1080.</p>
+    </div>
+    <div class="acts">
+      <button type="button" class="btn guide" id="guideBtn">
+        <span class="guide-ico" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </span>
+        Guide
+      </button>
+      <button type="button" class="btn" id="loadBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Load screenshot
+      </button>
+      <button class="btn go" id="exportBtn" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span id="exportLabel">Export PNG</span>
+      </button>
+    </div>
+  </header>
+
+  <input type="file" id="file" accept="image/*" style="display:none">
+
+  <div class="grid">
+    <div style="min-width:0">
+      <div class="stage" id="stage">
+        <canvas id="cv" width="1920" height="1080"></canvas>
+        <div class="drop" id="drop"><p>Tap Load screenshot<small>or drop a file here, or paste it</small></p></div>
+      </div>
+      <p class="err" id="err"></p>
+      <div class="result" id="result">
+        <img id="resultThumb" alt="">
+        <div class="meta"><b id="resultName">Ready</b><span id="resultNote">Saved to your downloads.</span></div>
+        <button type="button" class="mini" id="dlBtn">Download</button>
+        <button type="button" class="mini" id="shareBtn" style="display:none">Share</button>
+        <button type="button" class="mini" id="tabBtn">Open in tab</button>
+      </div>
+      <p class="tip">Drag to move · pinch or scroll to zoom · arrow keys nudge 1 px</p>
+    </div>
+
+    <aside class="panel">
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Symbol</h3></div>
+        <p class="cap">Futures</p>
+        <div class="row" id="futRow" style="margin-bottom:10px"></div>
+        <p class="cap">Forex</p>
+        <div class="row" id="fxRow"></div>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Session</h3><span class="hint" id="fadeHint">100%</span></div>
+        <div class="row" id="sessRow"></div>
+        <div class="slider" id="fadeSlider" style="margin-top:8px"><div class="track"></div><div class="fill"></div><div class="thumb"></div></div>
+        <p class="note">Fade on the two inactive labels. 0 keeps them flat grey.</p>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Timeframe</h3></div>
+        <div class="row" id="tfRow"></div>
+        <input class="field" id="tfInput" style="margin-top:8px" placeholder="Custom label">
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Zoom</h3><span class="hint" id="zoomHint">100.0%</span></div>
+        <div class="slider" id="zoomSlider" data-off="1"><div class="track"></div><div class="fill"></div><div class="thumb"></div></div>
+        <div class="row" style="margin-top:6px">
+          <button type="button" class="mini" data-z="-0.005">−0.5%</button>
+          <button type="button" class="mini" data-z="-0.001">−0.1%</button>
+          <button type="button" class="mini" data-z="0.001">+0.1%</button>
+          <button type="button" class="mini" data-z="0.005">+0.5%</button>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button type="button" class="chip" id="fitBtn" data-on="1">Fit</button>
+          <button type="button" class="chip" id="fillBtn" data-on="0">Fill</button>
+          <button type="button" class="mini" id="resetBtn">Reset</button>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Position</h3><span class="hint" id="posHint">0, 0 px</span></div>
+        <div class="row">
+          <button type="button" class="mini" data-n="-1,0">←</button>
+          <button type="button" class="mini" data-n="1,0">→</button>
+          <button type="button" class="mini" data-n="0,-1">↑</button>
+          <button type="button" class="mini" data-n="0,1">↓</button>
+          <button type="button" class="mini" data-n="-10,0">←10</button>
+          <button type="button" class="mini" data-n="10,0">10→</button>
+          <button type="button" class="mini" id="centreBtn">Centre</button>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Trim edges</h3><span class="hint" id="sizeHint">—</span></div>
+        <div id="edges"></div>
+        <p class="note">Cuts in source pixels, so you can shave a half candle off without the frame jumping.</p>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Background</h3><span class="hint" id="bgHint">#F5F5F5</span></div>
+        <div class="row" id="bgRow"></div>
+        <div class="row" style="margin-top:8px">
+          <label class="pick" id="pickWrap">
+            <input type="color" id="bgPicker" value="#f5f5f5" aria-label="Custom background colour">
+          </label>
+          <input class="field hexf" id="bgHex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Background hex">
+          <button type="button" class="mini" id="bgReset">Reset</button>
+        </div>
+        <p class="note">Overlays re-derive from whatever you pick — the glass keeps the same relationship to the background, and the labels flip to stay readable on dark colours.</p>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Overlay size</h3><span class="hint" id="uiHint">100%</span></div>
+        <div class="slider" id="uiSlider"><div class="track"></div><div class="fill"></div><div class="thumb"></div></div>
+        <div class="sech" style="margin-top:12px"><h3 class="lab">Overlay tone</h3><span class="hint" id="tintHint">50%</span></div>
+        <div class="slider" id="tintSlider"><div class="track"></div><div class="fill"></div><div class="thumb"></div></div>
+        <p class="note">Centre blends the panels into the background. Right lifts them toward white, left sinks them into a soft grey so they stay visible.</p>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Wordmark</h3></div>
+        <p class="cap">Logo</p>
+        <div class="row" id="logoRow"></div>
+        <p class="cap" style="margin-top:10px">Username</p>
+        <input class="field" id="handleInput" placeholder="Leave empty for logo only" maxlength="20" autocomplete="off" spellcheck="false">
+        <label class="check"><input type="checkbox" id="markChk" checked> Show on card</label>
+        <p class="note">The Instagram mark is drawn as an outline, so the chart shows through it.</p>
+      </section>
+
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Export quality</h3><span class="hint" id="expHint">3840 × 2160</span></div>
+        <div class="row" id="expRow"></div>
+        <p class="note">PNG, lossless. Larger sizes redraw every label and badge at full resolution and pull detail from the original screenshot rather than the editing copy.</p>
+      </section>
+
+      <section class="sec" id="removeSec" style="display:none">
+        <button class="mini danger" id="removeBtn">Remove screenshot</button>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div class="sheet" id="guideSheet" role="dialog" aria-modal="true" aria-label="Field guide" aria-hidden="true">
+  <div class="sheet-bar">
+    <span class="sheet-title">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1f9bf0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      <span>Guide</span>
+    </span>
+    <div class="sheet-acts">
+      <button type="button" class="mini" id="guideClose">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        Close
+      </button>
+    </div>
+  </div>
+  <iframe class="sheet-frame" id="guideFrame" title="Trades card editor field guide"></iframe>
+</div>
+
+<script>
+/* ==================================================================
+   FIXED EXPORT FRAME
+   The on-screen canvas IS the export canvas (1920x1080). Downloading
+   reads that exact canvas, so the file can never differ from the view.
+================================================================== */
+const W = 1920, H = 1080, BG_DEFAULT = "#f5f5f5";
+const POPPINS = 'Poppins, "Helvetica Neue", system-ui, sans-serif';
+const INTER   = 'Inter, "Helvetica Neue", system-ui, sans-serif';
+
+const SYMBOLS = [
+  { id:"NQ", group:"Futures", label:"NQ" },
+  { id:"ES", group:"Futures", label:"ES" },
+  { id:"YM", group:"Futures", label:"YM" },
+  { id:"GC", group:"Futures", label:"GC" },
+  { id:"SI", group:"Futures", label:"SI" },
+  { id:"EURUSD", group:"Forex", label:"EURUSD" },
+  { id:"GBPUSD", group:"Forex", label:"GBPUSD" }
+];
+const SESSIONS = ["London","New York","Asia"];
+const TIMEFRAMES = ["M1","M3","M5","M15","M30","H1","H4","H6","D1","W1"];
+const LOGOS = [
+  { id:"x", label:"X" },
+  { id:"instagram", label:"Instagram" }
+];
+const BACKDROPS = [
+  { hex:"#f5f5f5", name:"Default" },
+  { hex:"#ffffff", name:"Paper white" },
+  { hex:"#efe9df", name:"Warm linen" },
+  { hex:"#e8eef4", name:"Cool mist" },
+  { hex:"#20201c", name:"Charcoal" },
+  { hex:"#0f1116", name:"Midnight" }
+];
+
+/* ------------------------- colour derivation -------------------------------
+   Everything the overlay draws is derived from the background rather than
+   hardcoded, so a new background carries the whole design with it instead of
+   leaving black text on a black card. The numbers below are chosen so that
+   #f5f5f5 reproduces the original palette exactly — ink lands on #1c1c1c and
+   the tone span on 10 up / 32 down — and every other colour follows the same
+   relationships.
+--------------------------------------------------------------------------*/
+function hexRgb(h){
+  h=String(h).trim().replace(/^#/,"");
+  if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  const n=parseInt(h,16);
+  if(h.length!==6||isNaN(n)) return null;
+  return [(n>>16)&255,(n>>8)&255,n&255];
+}
+function rgbHex(c){
+  return "#"+c.map(function(v){
+    return Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,"0");
+  }).join("");
+}
+function mixTo(rgb,target,t){
+  return rgb.map(function(v,i){ return v+(target[i]-v)*t; });
+}
+function srgbLin(c){ c/=255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4); }
+function relLum(c){ return 0.2126*srgbLin(c[0])+0.7152*srgbLin(c[1])+0.0722*srgbLin(c[2]); }
+function css(c,a){
+  const r=Math.round(c[0]),g=Math.round(c[1]),b=Math.round(c[2]);
+  return a===undefined ? "rgb("+r+","+g+","+b+")" : "rgba("+r+","+g+","+b+","+a+")";
+}
+
+const BLACK=[0,0,0], WHITE=[255,255,255];
+
+/* Rebuilt whenever the background changes, then read by draw(). */
+function buildPalette(hex){
+  const bg=hexRgb(hex)||hexRgb(BG_DEFAULT);
+  const onDark=relLum(bg)<0.42;
+
+  /* Text keeps a trace of the background's hue rather than going pure black or
+     pure white, which is what stops it reading as a sticker on the card. */
+  const ink       = onDark ? mixTo(bg,WHITE,0.92)  : mixTo(bg,BLACK,0.885);
+  const inkStrong = onDark ? mixTo(bg,WHITE,0.96)  : mixTo(bg,BLACK,0.918);
+  const idle      = mixTo(bg,ink,0.258);   // inactive session labels
+
+  return {
+    bg:bg, hex:rgbHex(bg), onDark:onDark,
+    ink:css(ink), inkStrong:css(inkStrong), idleRgb:idle.map(Math.round).join(","),
+    tabBg: onDark ? css(mixTo(bg,WHITE,0.90)) : "#46443f",
+    tabFg: onDark ? css(mixTo(bg,BLACK,0.80)) : "#ffffff",
+    tabShadow: onDark ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.14)",
+    stroke: onDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.055)",
+    strokeSoft: onDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.05)",
+    shadow: onDark ? "rgba(0,0,0,0.38)" : "rgba(0,0,0,0.055)"
+  };
+}
+
+/* ---------------------------- canvas helpers ---------------------------- */
+function rr(ctx,x,y,w,h,r){
+  const rad=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rad,y); ctx.lineTo(x+w-rad,y); ctx.arcTo(x+w,y,x+w,y+rad,rad);
+  ctx.lineTo(x+w,y+h-rad); ctx.arcTo(x+w,y+h,x+w-rad,y+h,rad);
+  ctx.lineTo(x+rad,y+h); ctx.arcTo(x,y+h,x,y+h-rad,rad);
+  ctx.lineTo(x,y+rad); ctx.arcTo(x,y,x+rad,y,rad); ctx.closePath();
+}
+function glass(ctx,x,y,w,h,r,o){
+  o=o||{};
+  const fill=o.fill||"rgba(252,252,252,0.62)", stroke=o.stroke||"rgba(0,0,0,0.055)",
+        shadow=o.shadow!==false;
+  ctx.save();
+  if(shadow){ctx.shadowColor=o.shadowColor||"rgba(0,0,0,0.055)";ctx.shadowBlur=20;ctx.shadowOffsetY=5;}
+  rr(ctx,x,y,w,h,r); ctx.fillStyle=fill; ctx.fill(); ctx.restore();
+  ctx.save(); rr(ctx,x,y,w,h,r); ctx.lineWidth=1.4; ctx.strokeStyle=stroke; ctx.stroke(); ctx.restore();
+}
+function clipCircle(ctx,cx,cy,r,fn){
+  ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip(); fn(); ctx.restore();
+}
+function circleEdge(ctx,cx,cy,r){
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.lineWidth=Math.max(1,r*0.07); ctx.strokeStyle="rgba(255,255,255,0.9)"; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.lineWidth=1.2; ctx.strokeStyle="rgba(0,0,0,0.07)"; ctx.stroke();
+  ctx.restore();
+}
+function usFlag(ctx,cx,cy,r){
+  clipCircle(ctx,cx,cy,r,function(){
+    const x0=cx-r,y0=cy-r,s=r*2,sh=s/13;
+    ctx.fillStyle="#ffffff"; ctx.fillRect(x0,y0,s,s);
+    ctx.fillStyle="#b22234";
+    for(let i=0;i<13;i+=2) ctx.fillRect(x0,y0+i*sh,s,sh);
+    ctx.fillStyle="#3c3b6e"; ctx.fillRect(x0,y0,s*0.5,sh*7);
+    ctx.fillStyle="#ffffff";
+    for(let row=0;row<4;row++) for(let col=0;col<4;col++){
+      ctx.beginPath();
+      ctx.arc(x0+s*0.07+col*s*0.115, y0+sh*0.9+row*sh*1.6, r*0.045,0,Math.PI*2);
+      ctx.fill();
+    }
+  });
+  circleEdge(ctx,cx,cy,r);
+}
+function euFlag(ctx,cx,cy,r){
+  clipCircle(ctx,cx,cy,r,function(){
+    ctx.fillStyle="#003399"; ctx.fillRect(cx-r,cy-r,r*2,r*2);
+    ctx.fillStyle="#ffcc00";
+    for(let i=0;i<12;i++){
+      const a=(i/12)*Math.PI*2-Math.PI/2;
+      ctx.beginPath();
+      ctx.arc(cx+Math.cos(a)*r*0.52, cy+Math.sin(a)*r*0.52, r*0.085,0,Math.PI*2);
+      ctx.fill();
+    }
+  });
+  circleEdge(ctx,cx,cy,r);
+}
+function ukFlag(ctx,cx,cy,r){
+  clipCircle(ctx,cx,cy,r,function(){
+    const x0=cx-r,y0=cy-r,s=r*2;
+    ctx.fillStyle="#012169"; ctx.fillRect(x0,y0,s,s);
+    ctx.save(); ctx.lineCap="butt";
+    ctx.strokeStyle="#ffffff"; ctx.lineWidth=s*0.2;
+    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0+s,y0+s); ctx.moveTo(x0+s,y0); ctx.lineTo(x0,y0+s); ctx.stroke();
+    ctx.strokeStyle="#c8102e"; ctx.lineWidth=s*0.09;
+    ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x0+s,y0+s); ctx.moveTo(x0+s,y0); ctx.lineTo(x0,y0+s); ctx.stroke();
+    ctx.strokeStyle="#ffffff"; ctx.lineWidth=s*0.28;
+    ctx.beginPath(); ctx.moveTo(cx,y0); ctx.lineTo(cx,y0+s); ctx.moveTo(x0,cy); ctx.lineTo(x0+s,cy); ctx.stroke();
+    ctx.strokeStyle="#c8102e"; ctx.lineWidth=s*0.16;
+    ctx.beginPath(); ctx.moveTo(cx,y0); ctx.lineTo(cx,y0+s); ctx.moveTo(x0,cy); ctx.lineTo(x0+s,cy); ctx.stroke();
+    ctx.restore();
+  });
+  circleEdge(ctx,cx,cy,r);
+}
+function bars(ctx,cx,cy,r,color){
+  ctx.save(); ctx.fillStyle=color;
+  const bw=r*0.66,bh=r*0.34,inset=bh*0.34;
+  function trap(x,y){
+    ctx.beginPath();
+    ctx.moveTo(x-bw/2,y+bh/2); ctx.lineTo(x+bw/2,y+bh/2);
+    ctx.lineTo(x+bw/2-inset,y-bh/2); ctx.lineTo(x-bw/2+inset,y-bh/2);
+    ctx.closePath(); ctx.fill();
+  }
+  trap(cx,cy-r*0.24); trap(cx-bw*0.54,cy+r*0.26); trap(cx+bw*0.54,cy+r*0.26);
+  ctx.restore();
+}
+function numberBadge(ctx,cx,cy,r,bg,text){
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle=bg; ctx.fill();
+  ctx.fillStyle="#ffffff";
+  let size=r*0.86;
+  ctx.font="800 "+size+"px "+INTER;
+  const maxW=r*1.5, w=ctx.measureText(text).width;
+  if(w>maxW){ size=size*(maxW/w); ctx.font="800 "+size+"px "+INTER; }
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(text,cx,cy+size*0.04);
+  ctx.restore();
+  circleEdge(ctx,cx,cy,r);
+}
+function metalBadge(ctx,cx,cy,r,bg){
+  ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle=bg; ctx.fill(); ctx.restore();
+  bars(ctx,cx,cy,r,"#ffffff");
+  circleEdge(ctx,cx,cy,r);
+}
+const X_PATH="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68"+
+             "l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z";
+function drawXMark(ctx,cx,cy,size,color){
+  ctx.save();
+  ctx.translate(cx-size/2,cy-size/2);
+  ctx.scale(size/24,size/24);
+  ctx.fillStyle=color;
+  ctx.fill(new Path2D(X_PATH));
+  ctx.restore();
+}
+/* Instagram, drawn as outlines rather than a solid glyph, so the chart shows
+   through the squircle and the lens. Strokes are set inside the scaled space,
+   so they thicken with the mark and rasterise natively at any export size. */
+function drawInstaMark(ctx,cx,cy,size,color){
+  const s=size*0.94;          // a closed outline reads larger than the solid X
+  ctx.save();
+  ctx.translate(cx-s/2,cy-s/2);
+  ctx.scale(s/24,s/24);
+  ctx.strokeStyle=color; ctx.fillStyle=color;
+  ctx.lineWidth=2.1; ctx.lineJoin="round"; ctx.lineCap="round";
+  rr(ctx,2,2,20,20,5.6); ctx.stroke();               // body
+  ctx.beginPath(); ctx.arc(12,12,4.3,0,Math.PI*2); ctx.stroke();   // lens
+  ctx.beginPath(); ctx.arc(17.4,6.6,1.25,0,Math.PI*2); ctx.fill(); // flash dot
+  ctx.restore();
+}
+function drawMark(ctx,id,cx,cy,size,color){
+  if(id==="instagram") return drawInstaMark(ctx,cx,cy,size,color);
+  return drawXMark(ctx,cx,cy,size,color);
+}
+function drawSymbolIcon(ctx,id,cx,cy,r){
+  if(id==="NQ") return numberBadge(ctx,cx,cy,r,"#1f9bf0","100");
+  if(id==="ES") return numberBadge(ctx,cx,cy,r,"#e03131","500");
+  if(id==="YM") return numberBadge(ctx,cx,cy,r,"#1f9bf0","30");
+  if(id==="GC") return metalBadge(ctx,cx,cy,r,"#f2b705");
+  if(id==="SI") return metalBadge(ctx,cx,cy,r,"#b6b9bd");
+  if(id==="EURUSD"||id==="GBPUSD"){
+    const r2=r*0.72;
+    usFlag(ctx,cx+r*0.27,cy-r*0.27,r2);
+    (id==="EURUSD"?euFlag:ukFlag)(ctx,cx-r*0.24,cy+r*0.24,r2);
+    return;
+  }
+}
+/* Downscaling a big screenshot needs an intermediate buffer. Building it
+   per frame exhausts memory during a drag, so it is cached and only
+   rebuilt when the crop or the halving depth actually changes. */
+let PYR = {key:null, canvas:null};
+function releasePyr(){
+  if(PYR.canvas){ PYR.canvas.width=0; PYR.canvas.height=0; }
+  PYR={key:null,canvas:null};
+}
+function hqSource(img,sx,sy,sw,sh,dw,dh){
+  const ratio=Math.max(sw/dw,sh/dh);
+  if(!(ratio>2)) return null;                 // direct draw is already clean
+  const steps=Math.max(1,Math.floor(Math.log(ratio)/Math.LN2));
+  const key=[Math.round(sx),Math.round(sy),Math.round(sw),Math.round(sh),steps].join(",");
+  if(PYR.key===key && PYR.canvas) return PYR.canvas;
+
+  let cw=Math.round(sw), ch=Math.round(sh);
+  let buf=document.createElement("canvas"); buf.width=cw; buf.height=ch;
+  let b=buf.getContext("2d");
+  b.imageSmoothingEnabled=true; b.imageSmoothingQuality="high";
+  b.drawImage(img,sx,sy,sw,sh,0,0,cw,ch);
+  for(let i=0;i<steps;i++){
+    const nw=Math.max(1,Math.round(cw/2)), nh=Math.max(1,Math.round(ch/2));
+    const nb=document.createElement("canvas"); nb.width=nw; nb.height=nh;
+    const n=nb.getContext("2d");
+    n.imageSmoothingEnabled=true; n.imageSmoothingQuality="high";
+    n.drawImage(buf,0,0,cw,ch,0,0,nw,nh);
+    buf.width=0; buf.height=0;                // free immediately
+    buf=nb; cw=nw; ch=nh;
+  }
+  releasePyr();
+  PYR={key:key,canvas:buf};
+  return buf;
+}
+function drawImageHQ(ctx,img,sx,sy,sw,sh,dx,dy,dw,dh,k){
+  k=k||1;
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality="high";
+  if(!(dw>0)||!(dh>0)||!(sw>0)||!(sh>0)) return;
+  const buf=hqSource(img,sx,sy,sw,sh,dw*k,dh*k);
+  if(buf) ctx.drawImage(buf,0,0,buf.width,buf.height,dx,dy,dw,dh);
+  else ctx.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh);
+}
+
+/* ------------------------------- state ---------------------------------- */
+const S = {
+  img:null, imgFull:null, hasImage:false, imgW:0, imgH:0, fullW:0, fullH:0,
+  exportMul:2,
+  symbol:"NQ", session:"New York", timeframe:"H4",
+  zoom:1, offX:0, offY:0,
+  crop:{l:0,r:0,t:0,b:0},
+  ui:1, tint:50, fade:100, showMark:true, fitMode:"fit",
+  markLogo:"x", handle:"YSERTRADES",
+  bg:BG_DEFAULT, pal:null
+};
+S.pal=buildPalette(S.bg);
+
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const $ = (id)=>document.getElementById(id);
+
+/* Overlay tone: 0 melts the panels into the #f5f5f5 background, positive
+   lifts them toward white, negative sinks them below the background so the
+   panel reads as a soft grey block. The per-element weights keep their
+   relationship so rail, capsule and pill never drift out of balance. */
+/* Tone moves the panels away from the background, in whichever direction the
+   slider points. The old span of 10 up / 32 down was not arbitrary: 10 is
+   exactly the headroom #f5f5f5 has before it clips at white. Reading that
+   headroom off the actual background generalises the control to any colour and
+   still lands on 10 and 32 at the default, so the feel is unchanged. */
+function glassFill(weight){
+  const t=S.tint;
+  const k=Math.abs(t)/100;
+  const bg=S.pal.bg;
+  let up=t>=0;
+  const room=function(u){ return u ? 255-Math.max(bg[0],bg[1],bg[2]) : Math.min(bg[0],bg[1],bg[2]); };
+  let head=room(up);
+  /* Against pure white there is nothing above the background to lift toward,
+     and against pure black nothing below. Rather than let the panels collapse
+     into the card and vanish, take the separation from the other side. */
+  if(head<6 && room(!up)>head){ up=!up; head=room(up); }
+  const d=(up?1:-1)*Math.min(32,head)*k;
+  const a=Math.min(0.95,(0.30+0.55*k)*weight);
+  return css([bg[0]+d,bg[1]+d,bg[2]+d],a.toFixed(3));
+}
+
+function geometry(){
+  if(!S.img) return null;
+  const sx=S.crop.l, sy=S.crop.t;
+  const sw=Math.max(1,S.imgW-S.crop.l-S.crop.r);
+  const sh=Math.max(1,S.imgH-S.crop.t-S.crop.b);
+  const base = S.fitMode==="fill" ? Math.max(W/sw,H/sh) : Math.min(W/sw,H/sh);
+  const scale=base*S.zoom, dw=sw*scale, dh=sh*scale;
+  return {sx,sy,sw,sh,scale,dw,dh,dx:(W-dw)/2+S.offX,dy:(H-dh)/2+S.offY};
+}
+
+function drawTo(g2,k,useFull){
+  const P=S.pal;
+  g2.setTransform(k,0,0,k,0,0);
+  g2.clearRect(0,0,W,H);
+  g2.fillStyle=P.hex; g2.fillRect(0,0,W,H);
+
+  const g=geometry();
+  if(g && S.img){
+    g2.save(); g2.beginPath(); g2.rect(0,0,W,H); g2.clip();
+    const src=(useFull&&S.imgFull)?S.imgFull:S.img;
+    const sc=(src===S.img)?1:(S.fullW/S.imgW);
+    drawImageHQ(g2,src,g.sx*sc,g.sy*sc,g.sw*sc,g.sh*sc,g.dx,g.dy,g.dw,g.dh,k);
+    g2.restore();
+  }
+
+  const u=S.ui;
+
+  /* session tabs — active one pinned to the centre */
+  const tabFont="600 "+Math.round(29*u)+"px "+POPPINS;
+  g2.font=tabFont;
+  const tabH=58*u, tabY=40*u, padX=26*u, gap=22*u;
+  const ai=Math.max(0,SESSIONS.indexOf(S.session));
+  const ordered=[SESSIONS[(ai+2)%3],SESSIONS[ai],SESSIONS[(ai+1)%3]];
+  const tabs=ordered.map(function(label){
+    const tw=g2.measureText(label).width;
+    return {label:label,tw:tw,w:tw+padX*2};
+  });
+  tabs[1].x=(W-tabs[1].w)/2;
+  tabs[0].x=tabs[1].x-gap-tabs[0].w;
+  tabs[2].x=tabs[1].x+tabs[1].w+gap;
+
+  tabs.forEach(function(t,i){
+    const active=(i===1), cx2=t.x+t.w/2;
+    if(active){
+      g2.save();
+      g2.shadowColor=P.tabShadow; g2.shadowBlur=16; g2.shadowOffsetY=4;
+      rr(g2,t.x,tabY,t.w,tabH,tabH/2); g2.fillStyle=P.tabBg; g2.fill();
+      g2.restore();
+    }
+    g2.font=tabFont; g2.textAlign="center"; g2.textBaseline="middle";
+    if(active){ g2.fillStyle=P.tabFg; }
+    else{
+      const left=cx2-t.tw/2;
+      /* fade 0 = flat grey, 100 = fully dissolved at the outer end */
+      const f=S.fade/100;
+      const a0=(1-f).toFixed(3), a1=(1-0.45*f).toFixed(3);
+      const gr=g2.createLinearGradient(left,0,left+t.tw,0);
+      if(i===0){
+        gr.addColorStop(0,"rgba("+P.idleRgb+","+a0+")");
+        gr.addColorStop(0.45,"rgba("+P.idleRgb+","+a1+")");
+        gr.addColorStop(1,"rgba("+P.idleRgb+",1)");
+      }else{
+        gr.addColorStop(0,"rgba("+P.idleRgb+",1)");
+        gr.addColorStop(0.55,"rgba("+P.idleRgb+","+a1+")");
+        gr.addColorStop(1,"rgba("+P.idleRgb+","+a0+")");
+      }
+      g2.fillStyle=gr;
+    }
+    g2.fillText(t.label,cx2,tabY+tabH/2+1*u);
+  });
+
+  /* bottom rail sized from the badge */
+  const iconR=32*u, railPad=15*u;
+  const barH=iconR*2+railPad*2;
+  const barY=H-16-barH, barX=16;
+  glass(g2,barX,barY,W-32,barH,barH/2,{fill:glassFill(1),stroke:P.strokeSoft,shadowColor:P.shadow});
+
+  /* symbol badge + capsule */
+  const cy=barY+barH/2;
+  const iconCX=barX+railPad+iconR;
+  const sym=SYMBOLS.filter(function(s){return s.id===S.symbol;})[0]||SYMBOLS[0];
+  const symFont="600 "+Math.round(28*u)+"px "+INTER;
+  g2.font=symFont;
+  const tw=g2.measureText(sym.label).width;
+  const capH=58*u, capX=iconCX+iconR*0.42, textX=iconCX+iconR+26*u;
+  glass(g2,capX,cy-capH/2,textX-capX+tw+30*u,capH,capH/2,
+        {fill:glassFill(1.25),stroke:P.stroke,shadow:false});
+  g2.font=symFont; g2.fillStyle=P.ink;
+  g2.textAlign="left"; g2.textBaseline="middle";
+  g2.fillText(sym.label,textX,cy+1*u);
+  drawSymbolIcon(g2,sym.id,iconCX,cy,iconR);
+
+  /* wordmark, centred. With no username the logo centres on its own rather
+     than leaving a dangling slash. */
+  if(S.showMark){
+    const markSize=27*u, markText=S.handle?("/ "+S.handle):"";
+    g2.save();
+    if("letterSpacing" in g2) g2.letterSpacing=(1.2*u)+"px";
+    g2.font="400 "+Math.round(26*u)+"px "+POPPINS;
+    const mtw=markText?g2.measureText(markText).width:0, mgap=markText?14*u:0;
+    const gx=W/2-(markSize+mgap+mtw)/2;
+    drawMark(g2,S.markLogo,gx+markSize/2,cy,markSize,P.ink);
+    if(markText){
+      g2.fillStyle=P.ink; g2.textAlign="left"; g2.textBaseline="middle";
+      g2.fillText(markText,gx+markSize+mgap,cy+1*u);
+    }
+    if("letterSpacing" in g2) g2.letterSpacing="0px";
+    g2.restore();
+  }
+
+  /* timeframe pill */
+  const tfFont="700 "+Math.round(30*u)+"px "+POPPINS;
+  g2.font=tfFont;
+  const tfw=g2.measureText(S.timeframe).width;
+  const tfH=62*u, tfW=Math.max(104*u,tfw+56*u), tfY=barY-20*u-tfH;
+  glass(g2,(W-tfW)/2,tfY,tfW,tfH,22*u,{fill:glassFill(1.05),stroke:P.strokeSoft,shadowColor:P.shadow});
+  g2.font=tfFont; g2.fillStyle=P.inkStrong;
+  g2.textAlign="center"; g2.textBaseline="middle";
+  g2.fillText(S.timeframe,W/2,tfY+tfH/2+1*u);
+  g2.setTransform(1,0,0,1,0,0);
+}
+
+function draw(){ drawTo(ctx,1,false); }
+
+/* ------------------------------ controls -------------------------------- */
+/* Interaction fires far faster than the screen refreshes. Coalescing into
+   one update per frame keeps drag and pinch smooth instead of backing up. */
+let framePending=false;
+function update(){
+  if(framePending) return;
+  framePending=true;
+  requestAnimationFrame(function(){
+    framePending=false;
+    refreshHints();
+    draw();
+  });
+}
+
+function chip(label,on,fn){
+  const b=document.createElement("button");
+  b.className="chip"; b.type="button"; b.textContent=label; b.dataset.on=on?"1":"0";
+  b.onclick=fn; return b;
+}
+function buildChips(){
+  const fut=$("futRow"), fx=$("fxRow"), se=$("sessRow"), tf=$("tfRow"), lg=$("logoRow");
+  fut.innerHTML=fx.innerHTML=se.innerHTML=tf.innerHTML=lg.innerHTML="";
+  LOGOS.forEach(function(o){
+    lg.appendChild(chip(o.label,S.markLogo===o.id,function(){
+      S.markLogo=o.id; buildChips(); draw();
+    }));
+  });
+  SYMBOLS.forEach(function(s){
+    const b=chip(s.label,S.symbol===s.id,function(){S.symbol=s.id;buildChips();draw();});
+    (s.group==="Futures"?fut:fx).appendChild(b);
+  });
+  SESSIONS.forEach(function(s){
+    se.appendChild(chip(s,S.session===s,function(){S.session=s;buildChips();draw();}));
+  });
+  TIMEFRAMES.forEach(function(t){
+    tf.appendChild(chip(t,S.timeframe===t,function(){
+      S.timeframe=t; $("tfInput").value=t; buildChips(); draw();
+    }));
+  });
+}
+
+function makeSlider(el,opts){
+  const fill=el.querySelector(".fill"), thumb=el.querySelector(".thumb");
+  let active=false;
+  function paint(){
+    const pct=Math.max(0,Math.min(100,((opts.get()-opts.min)/(opts.max-opts.min))*100));
+    fill.style.width=pct+"%";
+    /* derived from the thumb's real width, so it stays centred when touch
+       sizing makes it bigger */
+    thumb.style.left="calc("+pct+"% - "+((thumb.offsetWidth||20)/2)+"px)";
+  }
+  function commit(clientX){
+    if(el.dataset.off==="1") return;
+    const r=el.getBoundingClientRect();
+    let t=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
+    let v=opts.min+t*(opts.max-opts.min);
+    v=Math.round(v/opts.step)*opts.step;
+    v=Math.min(opts.max,Math.max(opts.min,+v.toFixed(4)));
+    opts.set(v); paint();
+  }
+  el.addEventListener("pointerdown",function(e){
+    if(el.dataset.off==="1") return;
+    active=true;
+    /* Capture is a nicety — if it is refused the drag must still work, so it
+       must not come before the commit. */
+    try{ el.setPointerCapture(e.pointerId); }catch(err){}
+    commit(e.clientX);
+  });
+  el.addEventListener("pointermove",function(e){ if(active) commit(e.clientX); });
+  el.addEventListener("pointerup",function(e){
+    active=false; try{el.releasePointerCapture(e.pointerId);}catch(err){}
+  });
+  el.addEventListener("pointercancel",function(){active=false;});
+  el.paint=paint; paint();
+  return el;
+}
+
+const EXPORT_SIZES=[
+  {mul:1,label:"1080p"},
+  {mul:2,label:"4K"},
+  {mul:3,label:"6K"},
+  {mul:4,label:"8K"}
+];
+function buildExport(){
+  const row=$("expRow"); row.innerHTML="";
+  EXPORT_SIZES.forEach(function(o){
+    const b=chip(o.label+"  "+(W*o.mul)+"×"+(H*o.mul), S.exportMul===o.mul, function(){
+      S.exportMul=o.mul; buildExport(); refreshHints();
+    });
+    row.appendChild(b);
+  });
+}
+
+/* ------------------------------ background ------------------------------ */
+function applyBg(hex,fromHexField){
+  const rgb=hexRgb(hex);
+  if(!rgb) return false;
+  S.bg=rgbHex(rgb);
+  S.pal=buildPalette(S.bg);
+  $("bgPicker").value=S.bg;
+  if(!fromHexField) $("bgHex").value=S.bg.toUpperCase();
+  buildBackdrops();
+  refreshHints();
+  draw();
+  return true;
+}
+function buildBackdrops(){
+  const row=$("bgRow"); row.innerHTML="";
+  BACKDROPS.forEach(function(o){
+    const b=document.createElement("button");
+    b.type="button"; b.className="sw"; b.style.background=o.hex;
+    b.title=o.name+" · "+o.hex.toUpperCase();
+    b.setAttribute("aria-label",o.name);
+    b.dataset.on=(S.bg.toLowerCase()===o.hex.toLowerCase())?"1":"0";
+    b.onclick=function(){ applyBg(o.hex); };
+    row.appendChild(b);
+  });
+}
+
+function buildEdges(){
+  const box=$("edges"); box.innerHTML="";
+  [["Left","l"],["Right","r"],["Top","t"],["Bottom","b"]].forEach(function(pair){
+    const label=pair[0], edge=pair[1];
+    const row=document.createElement("div"); row.className="edge";
+    const sp=document.createElement("span"); sp.textContent=label; row.appendChild(sp);
+    function mk(txt,delta){
+      const b=document.createElement("button"); b.className="mini"; b.type="button"; b.textContent=txt;
+      b.onclick=function(){ setCropEdge(edge,S.crop[edge]+delta); };
+      return b;
+    }
+    row.appendChild(mk("−",-1));
+    const inp=document.createElement("input");
+    inp.className="num"; inp.type="number"; inp.value=S.crop[edge];
+    inp.dataset.edge=edge;
+    inp.oninput=function(){ setCropEdge(edge,Number(inp.value)||0,true); };
+    row.appendChild(inp);
+    row.appendChild(mk("+",1));
+    row.appendChild(mk("+10",10));
+    box.appendChild(row);
+  });
+}
+function syncEdges(){
+  document.querySelectorAll("#edges input").forEach(function(i){
+    if(document.activeElement!==i) i.value=S.crop[i.dataset.edge];
+  });
+}
+function setCropEdge(edge,value,fromInput){
+  if(!S.img) return;
+  const v=Math.max(0,Math.round(value));
+  const n=Object.assign({},S.crop); n[edge]=v;
+  if(n.l+n.r>S.imgW-20) return;
+  if(n.t+n.b>S.imgH-20) return;
+  S.crop=n;
+  if(!fromInput) syncEdges();
+  update();
+}
+
+function refreshHints(){
+  $("zoomHint").textContent=(S.zoom*100).toFixed(1)+"%";
+  $("posHint").textContent=S.offX+", "+S.offY+" px";
+  $("uiHint").textContent=Math.round(S.ui*100)+"%";
+  const tn=Math.round(S.tint);
+  $("tintHint").textContent = tn===0 ? "flat" : (tn>0 ? "+"+tn+" lighter" : tn+" darker");
+  $("fadeHint").textContent=Math.round(S.fade)+"%";
+  $("sizeHint").textContent=S.fullW?(S.fullW+" × "+S.fullH):"—";
+  $("expHint").textContent=(W*S.exportMul)+" × "+(H*S.exportMul);
+  $("bgHint").textContent=S.bg.toUpperCase();
+  $("fitBtn").dataset.on=S.fitMode==="fit"?"1":"0";
+  $("fillBtn").dataset.on=S.fitMode==="fill"?"1":"0";
+  zoomSlider.paint();
+}
+
+/* ------------------------------ interaction ----------------------------- */
+function canvasPoint(e){
+  const r=cv.getBoundingClientRect();
+  return {x:((e.clientX-r.left)/r.width)*W, y:((e.clientY-r.top)/r.height)*H};
+}
+const ptrs=new Map();
+let dragState=null, pinchState=null;
+
+cv.addEventListener("pointerdown",function(e){
+  if(!S.hasImage) return;
+  cv.setPointerCapture(e.pointerId);
+  const p=canvasPoint(e);
+  ptrs.set(e.pointerId,p);
+  if(ptrs.size===2){
+    const v=[...ptrs.values()], a=v[0], b=v[1], g=geometry();
+    if(!g) return;
+    dragState=null;
+    pinchState={dist:Math.hypot(a.x-b.x,a.y-b.y)||1,
+                mid:{x:(a.x+b.x)/2,y:(a.y+b.y)/2}, zoom0:S.zoom, g0:g};
+  }else if(ptrs.size===1){
+    dragState={px:p.x,py:p.y,ox:S.offX,oy:S.offY};
+  }
+});
+cv.addEventListener("pointermove",function(e){
+  if(!ptrs.has(e.pointerId)) return;
+  const p=canvasPoint(e);
+  ptrs.set(e.pointerId,p);
+  if(pinchState && ptrs.size>=2){
+    const v=[...ptrs.values()], a=v[0], b=v[1];
+    const dist=Math.hypot(a.x-b.x,a.y-b.y)||1;
+    const mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    const next=Math.min(6,Math.max(0.2,pinchState.zoom0*(dist/pinchState.dist)));
+    const g0=pinchState.g0;
+    const ux=(pinchState.mid.x-g0.dx)/g0.scale, uy=(pinchState.mid.y-g0.dy)/g0.scale;
+    const ns=g0.scale*(next/pinchState.zoom0);
+    const sw=g0.dw/g0.scale, sh=g0.dh/g0.scale;
+    S.zoom=next;
+    S.offX=Math.round(mid.x-ux*ns-(W-sw*ns)/2);
+    S.offY=Math.round(mid.y-uy*ns-(H-sh*ns)/2);
+    update();
+    return;
+  }
+  if(!dragState) return;
+  S.offX=Math.round(dragState.ox+(p.x-dragState.px));
+  S.offY=Math.round(dragState.oy+(p.y-dragState.py));
+  update();
+});
+function endPointer(e){
+  ptrs.delete(e.pointerId);
+  if(ptrs.size<2) pinchState=null;
+  if(ptrs.size===1){
+    const p=[...ptrs.values()][0];
+    dragState={px:p.x,py:p.y,ox:S.offX,oy:S.offY};
+  }else if(ptrs.size===0){ dragState=null; }
+  try{cv.releasePointerCapture(e.pointerId);}catch(err){}
+}
+cv.addEventListener("pointerup",endPointer);
+cv.addEventListener("pointercancel",endPointer);
+
+cv.addEventListener("wheel",function(e){
+  if(!S.hasImage) return;
+  e.preventDefault();
+  const g=geometry(); if(!g) return;
+  const p=canvasPoint(e);
+  const step=e.shiftKey?0.002:0.02;
+  const next=Math.min(6,Math.max(0.2,S.zoom*(1-Math.sign(e.deltaY)*step)));
+  const ratio=next/S.zoom;
+  S.zoom=next;
+  S.offX=Math.round(p.x-(p.x-g.dx)*ratio-(W-g.dw*ratio)/2);
+  S.offY=Math.round(p.y-(p.y-g.dy)*ratio-(H-g.dh*ratio)/2);
+  update();
+},{passive:false});
+
+window.addEventListener("keydown",function(e){
+  if(guideOpen){
+    if(e.key==="Escape"){ closeGuide(); e.preventDefault(); }
+    return;                                   // the guide has the keyboard
+  }
+  if(!S.hasImage) return;
+  const tag=(e.target.tagName||"").toLowerCase();
+  if(tag==="input"||tag==="textarea") return;
+  const step=e.shiftKey?10:1;
+  const map={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]};
+  if(map[e.key]){
+    S.offX+=map[e.key][0]; S.offY+=map[e.key][1];
+    update(); e.preventDefault();
+  }
+});
+
+/* ------------------------------ file input ------------------------------ */
+function showError(msg){
+  const el=$("err");
+  el.textContent=msg||"";
+  el.style.display=msg?"block":"none";
+}
+function loadFile(file){
+  if(!file) return;
+  if(file.type && file.type.indexOf("image/")!==0){
+    showError("That file isn't an image. Use a PNG, JPG or WebP screenshot.");
+    return;
+  }
+  showError("");
+  $("drop").querySelector("p").innerHTML="Reading image…";
+  const reader=new FileReader();
+  reader.onerror=function(){
+    showError("Couldn't read that file. Try saving it as PNG and loading again.");
+    resetDropText();
+  };
+  reader.onload=function(){
+    const im=new Image();
+    im.onload=function(){
+      /* The editor drives off a lighter copy so panning stays smooth, but
+         the untouched original is kept and used for export, so nothing
+         about the full-resolution detail is thrown away. */
+      let src=im, iw=im.naturalWidth, ih=im.naturalHeight;
+      S.imgFull=im; S.fullW=iw; S.fullH=ih;
+      const MAX=3840, big=Math.max(iw,ih);
+      if(big>MAX){
+        const k=MAX/big;
+        const pre=document.createElement("canvas");
+        pre.width=Math.round(iw*k); pre.height=Math.round(ih*k);
+        const p=pre.getContext("2d");
+        p.imageSmoothingEnabled=true; p.imageSmoothingQuality="high";
+        p.drawImage(im,0,0,pre.width,pre.height);
+        src=pre; iw=pre.width; ih=pre.height;
+      }
+      releasePyr();
+      S.img=src; S.imgW=iw; S.imgH=ih; S.hasImage=true;
+      S.crop={l:0,r:0,t:0,b:0}; S.zoom=1; S.offX=0; S.offY=0; S.fitMode="fit";
+      $("drop").style.display="none";
+      $("exportBtn").disabled=false;
+      $("removeSec").style.display="block";
+      $("zoomSlider").dataset.off="0";
+      cv.style.cursor="grab";
+      syncEdges(); refreshHints(); draw();
+    };
+    im.onerror=function(){
+      showError("That image didn't decode. HEIC from iPhone often fails — save it as PNG or JPG.");
+      resetDropText();
+    };
+    im.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+function resetDropText(){
+  $("drop").querySelector("p").innerHTML='Tap Load screenshot<small>or drop a file here, or paste it</small>';
+}
+
+/* ------------------------------ guide sheet ------------------------------ */
+/* The iframe is only given a src the first time the guide is opened, so the
+   editor still starts as one document with nothing else to fetch. */
+let guideOpen=false, guideLoaded=false;
+function openGuide(){
+  if(!guideLoaded){ $("guideFrame").src="guide.html"; guideLoaded=true; }
+  $("guideSheet").classList.add("on");
+  $("guideSheet").setAttribute("aria-hidden","false");
+  document.body.style.overflow="hidden";
+  guideOpen=true;
+  setTimeout(function(){ try{ $("guideClose").focus(); }catch(e){} },30);
+}
+function closeGuide(){
+  $("guideSheet").classList.remove("on");
+  $("guideSheet").setAttribute("aria-hidden","true");
+  document.body.style.overflow="";
+  guideOpen=false;
+  try{ $("guideBtn").focus(); }catch(e){}
+}
+/* A button, not a link. There is no href to follow, so no combination of
+   host, sandbox or failed script can navigate the frame away from the editor. */
+$("guideBtn").onclick=openGuide;
+$("guideClose").onclick=closeGuide;
+/* If guide.html was not deployed alongside this page the frame would show the
+   host's 404 inside the panel, which reads like the editor is broken. Check
+   for the guide's own markup and say what is actually wrong instead. */
+$("guideFrame").addEventListener("load",function(){
+  try{
+    const d=$("guideFrame").contentDocument;
+    if(d && !d.querySelector(".deck")){
+      closeGuide();
+      showError("The guide isn't deployed next to this page. Upload guide.html alongside index.html.");
+    }
+  }catch(e){}
+});
+/* Esc pressed inside the guide can't reach this document, so the guide posts
+   it back out instead. */
+window.addEventListener("message",function(e){
+  const d=e.data;
+  if(d && typeof d==="object" && d.type==="guide:close") closeGuide();
+});
+
+$("loadBtn").onclick=function(){ $("file").click(); };
+$("file").onchange=function(e){ loadFile(e.target.files[0]); e.target.value=""; };
+
+const stage=$("stage");
+stage.addEventListener("dragover",function(e){ e.preventDefault(); });
+stage.addEventListener("drop",function(e){
+  e.preventDefault();
+  if(e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+window.addEventListener("paste",function(e){
+  if(guideOpen) return;
+  const items=(e.clipboardData&&e.clipboardData.items)||[];
+  for(let i=0;i<items.length;i++){
+    if(items[i].type.indexOf("image/")===0){
+      loadFile(items[i].getAsFile());
+      e.preventDefault();
+      break;
+    }
+  }
+});
+
+/* -------------------------------- export -------------------------------- */
+/* --------------------------- delivering the file -------------------------
+   Embedded in an iframe (Whop, Notion, any host) a plain download can be
+   blocked by the frame sandbox. So the file is held onto and offered three
+   ways: direct download, the native share sheet, and opening in a new tab
+   where it can be saved by hand. One of those works everywhere.
+--------------------------------------------------------------------------*/
+const EMBEDDED = (function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
+let lastBlob=null, lastUrl=null, lastName="";
+
+function deliver(blobOrUrl,name){
+  if(lastUrl){ try{URL.revokeObjectURL(lastUrl);}catch(e){} lastUrl=null; }
+  lastName=name;
+  lastBlob=(typeof blobOrUrl==="string")?null:blobOrUrl;
+  try{ lastUrl=lastBlob?URL.createObjectURL(lastBlob):blobOrUrl; }
+  catch(e){ lastUrl=null; }
+
+  const res=$("result");
+  res.classList.add("on");
+  $("resultName").textContent=name;
+  if(lastUrl) $("resultThumb").src=lastUrl;
+
+  const ok=triggerDownload();
+  $("resultNote").textContent = ok
+    ? "Saved to your downloads. If nothing appeared, use Share or Open in tab."
+    : "Use Download, Share, or Open in tab to save it.";
+
+  const f=shareFile();
+  $("shareBtn").style.display = f ? "inline-flex" : "none";
+}
+
+function shareFile(){
+  if(!lastBlob || !navigator.canShare || typeof File==="undefined") return null;
+  try{
+    const f=new File([lastBlob],lastName,{type:"image/png"});
+    return navigator.canShare({files:[f]}) ? f : null;
+  }catch(e){ return null; }
+}
+
+function triggerDownload(){
+  if(!lastUrl) return false;
+  try{
+    const a=document.createElement("a");
+    a.href=lastUrl; a.download=lastName; a.rel="noopener";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    return true;
+  }catch(e){ return false; }
+}
+
+$("dlBtn").onclick=function(){ triggerDownload(); };
+$("tabBtn").onclick=function(){
+  if(!lastUrl) return;
+  const w=window.open(lastUrl,"_blank","noopener");
+  if(!w) $("resultNote").textContent="Your browser blocked the new tab. Allow pop-ups, or use Share.";
+};
+$("shareBtn").onclick=function(){
+  const f=shareFile();
+  if(!f) return;
+  navigator.share({files:[f],title:lastName}).catch(function(){});
+};
+
+$("exportBtn").onclick=function(){
+  if(!S.hasImage) return;
+  const btn=$("exportBtn");
+  btn.disabled=true; $("exportLabel").textContent="Exporting…";
+  showError("");
+  $("result").classList.remove("on");
+
+  /* Render offscreen at the chosen size. Every overlay is vector drawn, so it
+     is rasterised natively at the output resolution rather than scaled up
+     from the preview.
+
+     Every size is also supersampled now, not just 1080p: render larger, then
+     resolve down, which is what actually cleans up the edges of the badges,
+     the pill and the type. Only 1080p used to get that, so choosing a bigger
+     export bought pixels but lost the anti-aliasing pass and did not look
+     meaningfully better.
+
+     The ceiling of 4 keeps the working canvas at 7680x4320 — exactly what an
+     8K export already allocates today, so nothing new can run out of memory
+     that did not before, and attempt() drops the supersample if it does. */
+  const mul=S.exportMul;
+  const renderK=Math.min(4,mul*2);
+  const outW=W*mul, outH=H*mul;
+  const name=S.symbol+"-"+S.session.replace(/\s+/g,"")+"-"+S.timeframe+"-"+outW+"x"+outH+".png";
+
+  function finish(){ btn.disabled=false; $("exportLabel").textContent="Export PNG"; releasePyr(); }
+  function save(blobOrUrl){ deliver(blobOrUrl,name); finish(); }
+
+  function attempt(k){
+    let big=null,out=null;
+    try{
+      big=document.createElement("canvas");
+      big.width=Math.round(W*k); big.height=Math.round(H*k);
+      const g2=big.getContext("2d");
+      if(!g2) throw new Error("no context");
+      drawTo(g2,k,true);
+
+      if(Math.round(W*k)!==outW){
+        /* supersampled: resolve down to the requested size */
+        out=document.createElement("canvas");
+        out.width=outW; out.height=outH;
+        const o=out.getContext("2d");
+        o.imageSmoothingEnabled=true; o.imageSmoothingQuality="high";
+        o.drawImage(big,0,0,big.width,big.height,0,0,outW,outH);
+        big.width=0; big.height=0; big=null;
+      }else{
+        out=big; big=null;
+      }
+      return out;
+    }catch(err){
+      if(big){ big.width=0; big.height=0; }
+      if(out){ out.width=0; out.height=0; }
+      return null;
+    }
+  }
+
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    let canvasOut=attempt(renderK);
+    if(!canvasOut && renderK!==mul) canvasOut=attempt(mul);   // drop the supersample
+    if(!canvasOut && mul>1){
+      showError("Not enough memory for "+outW+" × "+outH+". Try a smaller export size.");
+      finish(); return;
+    }
+    if(!canvasOut){ showError("Export failed. Reload the page and try again."); finish(); return; }
+
+    function cleanup(){ canvasOut.width=0; canvasOut.height=0; }
+    function fallback(){
+      try{
+        if(mul>2){ cleanup(); finish();
+          showError("Couldn't package that size here. Export at 4K or 1080p instead."); return; }
+        const url=canvasOut.toDataURL("image/png");
+        cleanup(); save(url);
+      }catch(err){
+        cleanup(); finish();
+        showError("Export failed at that size. Try a smaller one.");
+      }
+    }
+    try{
+      canvasOut.toBlob(function(blob){
+        if(!blob) return fallback();
+        cleanup(); save(blob);
+      },"image/png");
+    }catch(err){ fallback(); }
+  });});
+};
+
+/* ------------------------------ wiring ---------------------------------- */
+document.querySelectorAll("[data-z]").forEach(function(b){
+  b.onclick=function(){
+    S.zoom=Math.min(6,Math.max(0.2,+(S.zoom+parseFloat(b.dataset.z)).toFixed(4)));
+    update();
+  };
+});
+document.querySelectorAll("[data-n]").forEach(function(b){
+  b.onclick=function(){
+    const p=b.dataset.n.split(",");
+    S.offX+=parseInt(p[0],10); S.offY+=parseInt(p[1],10);
+    update();
+  };
+});
+$("centreBtn").onclick=function(){ S.offX=0; S.offY=0; refreshHints(); draw(); };
+$("fitBtn").onclick=function(){ S.fitMode="fit"; S.zoom=1; S.offX=0; S.offY=0; refreshHints(); draw(); };
+$("fillBtn").onclick=function(){ S.fitMode="fill"; S.zoom=1; S.offX=0; S.offY=0; refreshHints(); draw(); };
+$("resetBtn").onclick=function(){
+  S.zoom=1; S.offX=0; S.offY=0; S.crop={l:0,r:0,t:0,b:0}; S.fitMode="fit";
+  syncEdges(); refreshHints(); draw();
+};
+$("removeBtn").onclick=function(){
+  releasePyr();
+  S.img=null; S.imgFull=null; S.hasImage=false; S.imgW=0; S.imgH=0; S.fullW=0; S.fullH=0;
+  S.zoom=1; S.offX=0; S.offY=0; S.crop={l:0,r:0,t:0,b:0}; S.fitMode="fit";
+  $("drop").style.display="grid"; resetDropText();
+  $("result").classList.remove("on");
+  $("exportBtn").disabled=true;
+  $("removeSec").style.display="none";
+  $("zoomSlider").dataset.off="1";
+  cv.style.cursor="default";
+  syncEdges(); refreshHints(); draw();
+};
+$("tfInput").oninput=function(){
+  S.timeframe=$("tfInput").value.slice(0,6).toUpperCase();
+  buildChips(); draw();
+};
+$("markChk").onchange=function(){ S.showMark=$("markChk").checked; draw(); };
+$("handleInput").oninput=function(){
+  S.handle=$("handleInput").value.slice(0,20);
+  draw();
+};
+$("bgPicker").oninput=function(){ applyBg($("bgPicker").value); };
+$("bgHex").oninput=function(){
+  const el=$("bgHex"), v=el.value.trim();
+  const ok=applyBg(v.charAt(0)==="#"?v:"#"+v,true);
+  el.classList.toggle("bad",!ok && v!=="" && v!=="#");
+};
+$("bgHex").onblur=function(){
+  $("bgHex").classList.remove("bad");
+  $("bgHex").value=S.bg.toUpperCase();
+};
+$("bgReset").onclick=function(){ applyBg(BG_DEFAULT); };
+
+const zoomSlider=makeSlider($("zoomSlider"),{
+  min:20,max:400,step:0.1,
+  get:function(){return Math.min(400,Math.max(20,S.zoom*100));},
+  set:function(v){ S.zoom=v/100; update(); }
+});
+makeSlider($("uiSlider"),{
+  min:80,max:120,step:1,
+  get:function(){return S.ui*100;},
+  set:function(v){ S.ui=v/100; update(); }
+});
+makeSlider($("tintSlider"),{
+  min:-100,max:100,step:1,
+  get:function(){return S.tint;},
+  set:function(v){ S.tint=v; update(); }
+});
+makeSlider($("fadeSlider"),{
+  min:0,max:100,step:1,
+  get:function(){return S.fade;},
+  set:function(v){ S.fade=v; update(); }
+});
+
+if(EMBEDDED){
+  document.body.classList.add("embedded");
+  /* some hosts size the frame from a posted height; harmless if ignored */
+  const report=function(){
+    try{ parent.postMessage({type:"resize",height:document.documentElement.scrollHeight},"*"); }catch(e){}
+  };
+  if(window.ResizeObserver) new ResizeObserver(report).observe(document.body);
+  window.addEventListener("load",report);
+}
+
+buildChips();
+buildExport();
+buildEdges();
+buildBackdrops();
+$("bgHex").value=S.bg.toUpperCase();
+$("tfInput").value=S.timeframe;
+$("handleInput").value=S.handle;
+refreshHints();
+draw();
+
+/* redraw once webfonts land so canvas text uses Inter/Poppins */
+if(document.fonts && document.fonts.ready){
+  Promise.all([
+    document.fonts.load("600 30px Inter"),
+    document.fonts.load("800 30px Inter"),
+    document.fonts.load("400 30px Poppins"),
+    document.fonts.load("600 30px Poppins"),
+    document.fonts.load("700 30px Poppins")
+  ]).catch(function(){}).then(function(){
+    return document.fonts.ready;
+  }).then(function(){ draw(); }).catch(function(){});
+}
+</script>
+</body>
+</html>
