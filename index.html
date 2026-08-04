@@ -32,6 +32,26 @@
          flashes white behind the intro. */
       html, body { margin: 0; background: #121212; }
 
+      /* Instrument Serif, self-hosted rather than pulled from Google's CDN.
+         SIL Open Font License, so redistribution is fine, and a font served
+         from our own origin cannot be blocked by whatever Content-Security-
+         Policy the host frame happens to set. 15.7KB, latin only.
+
+         font-display:swap because the only thing wearing it is the signature
+         at the foot of the calculator — nothing above the fold should ever
+         wait on it. If it never arrives, the fallback is a serif italic and
+         the signature still reads as one. */
+      @font-face {
+        font-family: "Instrument Serif";
+        font-style: italic;
+        font-weight: 400;
+        font-display: swap;
+        src: url("./fonts/instrument-serif-italic.woff2") format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+                       U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191,
+                       U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+
       #intro {
         --intro-hold: 1150ms;   /* wordmark on screen */
         --intro-out: 380ms;     /* fade to the app */
