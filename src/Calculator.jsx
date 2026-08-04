@@ -392,7 +392,13 @@ export default function Calculator({ hidden = false }) {
           outside .wrap so it is obviously unaffected by .wrap being hidden. */}
       <style>{`
         html, body {
-          overflow-y: scroll;
+          /* scrollbar-gutter reserves the track so the layout does not shift
+             when results appear. overflow-y:scroll used to be here as well,
+             which *drew* a full-height scrollbar whether or not there was
+             anything to scroll — on a desktop the untouched calculator came to
+             916px against a 900px viewport, so the wheel moved it 16px and
+             stopped, under a scrollbar promising a page. Reserve the gutter,
+             don't fake the bar. */
           scrollbar-gutter: stable;
           background: #121212;          /* unset before: iOS overscroll flashed white */
           overscroll-behavior-y: none;
@@ -401,9 +407,12 @@ export default function Calculator({ hidden = false }) {
         .wrap {
           min-height: 100vh;
           background: transparent;      /* .bg-layer paints the ground now */
+          /* 24px, not 50: --tabbar-reserve already carries a 14px gap above the
+             pill, and the extra was pure overhang — enough to push an otherwise
+             screen-sized page just past the fold. */
           padding: calc(36px + env(safe-area-inset-top, 0px))
                    max(18px, env(safe-area-inset-right, 0px))
-                   calc(50px + var(--tabbar-reserve, 0px))
+                   calc(24px + var(--tabbar-reserve, 0px))
                    max(18px, env(safe-area-inset-left, 0px));
           font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
           display: flex;

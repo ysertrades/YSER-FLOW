@@ -7,6 +7,9 @@
 <style>*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0}</style>
 </head>
 <body>
+<!-- Where the card's edge used to say "this is one slide of several", a hairline
+     across the top says it instead. It is the only chrome above the fold. -->
+<div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
 <div class="deck" id="deck">
 
   <!-- ══════════════════════════ COVER ══════════════════════════ -->
@@ -729,8 +732,14 @@
 </div>
 
 <nav class="nav" aria-label="Slide navigation">
-  <a class="navhome" id="home" href="index.html" aria-label="Back to the editor" title="Back to the editor" hidden>
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+  <!-- Two ways out, one shown at a time. Framed by the shell, the button hands
+       control back to it; standing alone, the link goes to the editor. -->
+  <button type="button" class="navback" id="back" aria-label="Leave the guide" hidden>
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    <span>Back</span>
+  </button>
+  <a class="navback" id="home" href="index.html" aria-label="Back to the editor" title="Back to the editor" hidden>
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
     <span>Editor</span>
   </a>
   <button class="navbtn" id="prev" aria-label="Previous slide">
@@ -799,8 +808,14 @@
 /* Column layout: the deck takes the space that is left and the nav sits below
    it in flow, so the pill can never come to rest on top of the reading text
    the way a fixed bar does. */
+/* The deck is edge to edge. The card used to float inside the viewport with a
+   radius and a margin all round, which on a phone read as a cropped square
+   rather than a page — and inside the shell it was a box inside a box. So the
+   card surface IS the page now: body takes the card's colour so there is no
+   seam at either end of a scroll, and the only thing left inset is the text
+   column itself. Nothing about the type or the spacing inside the card moved. */
 body{
-  margin:0; background:var(--ground); color:var(--ink);
+  margin:0; background:var(--glass); color:var(--ink);
   font-family:var(--sans); font-size:15px; line-height:1.62;
   -webkit-font-smoothing:antialiased; overflow:hidden;
   height:100vh; height:100dvh;
@@ -809,10 +824,26 @@ body{
 
 .deck{position:relative; flex:1 1 auto; min-height:0; z-index:1;}
 
+.progress{
+  flex:none; height:2px; width:100%; z-index:6;
+  background:var(--hair-2); overflow:hidden;
+}
+.progress i{
+  display:block; height:100%; width:0;
+  background:var(--signal);
+  transition:width .32s cubic-bezier(.22,.9,.28,1);
+}
+@media (prefers-reduced-motion:reduce){ .progress i{transition:none;} }
+
+/* display:block, not flex. Centring an overflowing item with auto margins puts
+   its top above the scroll origin, where it cannot be reached — the reason a
+   long slide could not be scrolled back to its first line. .inner does the
+   centring instead, via min-height:100%, which simply stops applying once the
+   content is taller than the frame. */
 .slide{
   position:absolute; inset:0;
-  display:flex; overflow-y:auto; overflow-x:hidden;
-  padding:20px 16px 24px;
+  display:block; overflow-y:auto; overflow-x:hidden;
+  padding:0;
   -webkit-overflow-scrolling:touch;
   visibility:hidden; pointer-events:none; opacity:0;
 }
@@ -852,18 +883,23 @@ body{
 @media (prefers-reduced-motion:reduce){
   .slide.on .panel, .slide.on .panel > *{ animation:none; }
 }
-@media (min-width:760px){ .slide{ padding:26px 20px 30px; } }
-.inner{margin:auto; width:100%; max-width:1120px;}
+.inner{
+  min-height:100%;
+  display:flex; flex-direction:column; justify-content:center;
+  margin-inline:auto; width:100%; max-width:1120px;
+}
 
 /* ═══════════════════════ GLASS ═══════════════════════
    The app draws its panels as rgba(252,252,252,0.62) with a 1.4px
    hairline at rgba(0,0,0,0.055) and a 20px/5px shadow. Same recipe. */
+/* No frame: no radius, no border, no shadow. The padding stays exactly as it
+   was — it is what holds the text off the screen edge now that the slide has
+   none of its own, so the reading measure is unchanged. */
 .panel{
   background:var(--glass);
-  border:1px solid var(--hair);
-  border-radius:22px;
-  /* the inset hairline is light catching the top edge of the card */
-  box-shadow:var(--shade), inset 0 1px 0 var(--edge);
+  border:0;
+  border-radius:0;
+  box-shadow:none;
   padding:clamp(20px,3.4vw,46px);
   display:flex; flex-direction:column; gap:clamp(16px,2.1vw,26px);
 }
@@ -1186,27 +1222,37 @@ input[type="range"]::-moz-range-thumb{
 .size.on small{color:var(--signal);}
 
 /* ═══════════════════════ NAV ═══════════════════════ */
+/* The deck surface is the light note now, so the pill inverts: it used to be
+   the lifted chip on a dark ground, it is now the dark chip on a lit field.
+   Same separation, opposite direction, no colour introduced. */
 .nav{
   position:relative; z-index:5; flex:none;
   align-self:center; margin:0 auto 14px;
   display:flex; align-items:center; gap:5px;
   padding:6px 8px; border-radius:999px;
-  background:var(--glass); border:1px solid var(--hair-2);
+  background:var(--ground); border:1px solid var(--hair-2);
   box-shadow:var(--shade), inset 0 1px 0 var(--edge);
   max-width:calc(100vw - 24px);
 }
-/* Only meaningful when the guide is deployed beside index.html, so JS
-   reveals it rather than leaving a dead link on a standalone copy. */
-.navhome{
-  display:inline-flex; align-items:center; gap:6px; flex:none;
-  height:30px; padding:0 11px 0 9px; margin-right:2px;
-  border-radius:999px; background:var(--wash); color:var(--signal);
-  font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:.04em;
-  text-decoration:none; transition:background .16s ease;
+
+/* The way out. Inside the shell the tab switcher hides itself while you read,
+   so this is the only exit on screen and it has to look like it: solid amber,
+   the deck's one accent, and the only filled thing in a pill of ghost buttons.
+   The label never collapses to a bare arrow — on a phone that is the
+   difference between a button and a decoration. */
+.navback{
+  display:inline-flex; align-items:center; gap:7px; flex:none;
+  height:32px; padding:0 13px 0 10px; margin-right:3px;
+  border:0; cursor:pointer;
+  border-radius:999px; background:var(--signal); color:var(--ground);
+  font-family:var(--mono); font-size:11.5px; font-weight:700; letter-spacing:.05em;
+  text-decoration:none; white-space:nowrap;
+  transition:filter .16s ease, transform .12s ease;
 }
-.navhome:hover{background:var(--signal-wash,var(--wash)); filter:brightness(.96);}
-.navhome[hidden]{display:none;}
-@media (max-width:600px){ .navhome span{display:none;} .navhome{padding:0 9px;} }
+.navback:hover{filter:brightness(1.08);}
+.navback:active{transform:scale(.96);}
+.navback:focus-visible{outline:2px solid var(--ink); outline-offset:2px;}
+.navback[hidden]{display:none;}
 .navbtn{
   display:grid; place-items:center; width:30px; height:30px; flex:none;
   border-radius:50%; border:0; background:none; color:var(--ink-2); cursor:pointer;
@@ -1239,6 +1285,7 @@ input[type="range"]::-moz-range-thumb{
   .navbtn{width:44px; height:44px;}
   .navbtn svg{width:18px; height:18px;}
   .count{font-size:12px; padding:0 10px 0 6px;}
+  .navback{height:44px; padding:0 15px 0 12px; margin-right:4px; font-size:12px;}
 }
 
 /* ═══════════════════ PHONE DENSITY ═══════════════════
@@ -1250,7 +1297,7 @@ input[type="range"]::-moz-range-thumb{
   h2{font-size:clamp(23px,6.4vw,30px); letter-spacing:-.026em;}
   .lead{font-size:15.5px; line-height:1.5;}
   .sub{font-size:12px;}
-  .panel{gap:15px; border-radius:18px;}
+  .panel{gap:15px;}
   .two{gap:18px;}
   .col{gap:13px;}
   .head{gap:7px;}
@@ -1971,6 +2018,7 @@ var slides=[].slice.call(document.querySelectorAll(".slide"));
 var dotsBox=document.getElementById("dots");
 var prevBtn=document.getElementById("prev"), nextBtn=document.getElementById("next");
 var curOut=document.getElementById("cur"), totOut=document.getElementById("tot");
+var progressBar=document.getElementById("progressBar");
 var idx=0;
 totOut.textContent=slides.length;
 
@@ -2001,6 +2049,7 @@ function go(n){
   curOut.textContent=idx+1;
   prevBtn.disabled=(idx===0);
   nextBtn.disabled=(idx===slides.length-1);
+  progressBar.style.width=((idx+1)/slides.length*100)+"%";
 }
 prevBtn.addEventListener("click",function(){ go(idx-1); });
 nextBtn.addEventListener("click",function(){ go(idx+1); });
@@ -2040,20 +2089,21 @@ function repaintAll(){
   paintTabs();
   paintMarks();
 }
-/* Inside the editor's guide panel there is already a Close button, and
-   following a link would nest the editor inside its own overlay — so the back
-   link is for the standalone page only. */
+/* Two exits, one shown. Framed, the host owns navigation and a link would only
+   nest another copy of it inside this frame, so the button asks the host to
+   take over. Standalone, there is no host to ask and the link is the exit. */
 var inFrame=(function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
-if(!inFrame && (/(^|\/)guide\.html?$/i.test(location.pathname) || location.protocol==="file:")){
-  document.getElementById("home").hidden=false;
-}
-/* Esc pressed in here cannot reach the editor's document, so hand it back. */
+function leave(){ try{ parent.postMessage({type:"guide:back"},"*"); }catch(err){} }
+
 if(inFrame){
+  document.getElementById("back").hidden=false;
+  document.getElementById("back").addEventListener("click",leave);
+  /* Esc pressed in here cannot reach the host's document, so hand it back. */
   window.addEventListener("keydown",function(e){
-    if(e.key==="Escape"){
-      try{ parent.postMessage({type:"guide:close"},"*"); }catch(err){}
-    }
+    if(e.key==="Escape"){ leave(); }
   });
+}else if(/(^|\/)guide\.html?$/i.test(location.pathname) || location.protocol==="file:"){
+  document.getElementById("home").hidden=false;
 }
 
 buildHeroChips();

@@ -31,12 +31,6 @@ h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
 .btn.go{background:#171717;border-color:#171717;color:#fff}
 .btn.go:active{background:#000}
 .btn:disabled{opacity:.35;cursor:default}
-/* Guide sits apart from the two working buttons: tinted, never black, so it
-   reads as a way out of the tool rather than a step inside it. */
-.btn.guide{border-color:#c6e2f8;background:#f4faff;color:#0e6bb8;text-decoration:none}
-.btn.guide:active{background:#e6f3fe}
-.guide-ico{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
-  border-radius:7px;background:#1f9bf0;color:#fff;margin-left:-4px;flex:none}
 .grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
 .stage{position:relative;width:100%;margin:0 auto;border-radius:12px;overflow:hidden;background:#fff;border:1px solid #e4e4e4}
 canvas{display:block;width:100%;height:auto;touch-action:none}
@@ -110,25 +104,10 @@ body.embedded .head{margin-bottom:10px}
 .result .meta{font-size:12px;color:#767676;flex:1;min-width:120px}
 .result .meta b{display:block;color:#222;font-weight:600;font-size:12.5px}
 .danger:active{background:#fff5f5;border-color:#f0b4b4;color:#b3261e}
-/* ---------------------------- guide sheet -------------------------------
-   Embedded in Whop a new tab is either blocked by the frame sandbox or throws
-   the reader out of the app view, so the guide opens as a panel inside the
-   editor. It stays a separate document in an iframe: the guide's stylesheet
-   uses .panel, .row, .chip, .note, .head and .field, all of which this page
-   already defines, so a shared document would have them fighting.
--------------------------------------------------------------------------*/
-.sheet{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:#eeece6;
-  opacity:0;visibility:hidden;transform:translateY(10px);
-  transition:opacity .22s ease,transform .22s cubic-bezier(.22,.8,.3,1),visibility 0s .22s}
-.sheet.on{opacity:1;visibility:visible;transform:none;transition-delay:0s}
-.sheet-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:none;
-  padding:9px 11px;background:#fff;border-bottom:1px solid #e4e4e4}
-.sheet-title{display:inline-flex;align-items:center;gap:8px;min-width:0;
-  font:600 13px/1 Poppins,sans-serif;color:#222}
-.sheet-title span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sheet-acts{display:flex;gap:6px;flex:none}
-.sheet-frame{flex:1;width:100%;border:0;display:block;background:#eeece6}
-@media (prefers-reduced-motion:reduce){ .sheet{transition:opacity .01s linear,visibility 0s} }
+/* The guide used to open as a panel inside this page. It is now a sibling
+   surface in the shell that hosts both, reached from the tab switcher, so the
+   panel, its button and the postMessage handshake behind them are all gone.
+   guide.html still stands alone at its own URL. */
 @media (min-width:1024px){
   .wrap{padding:20px}
   .grid{grid-template-columns:minmax(0,1fr) 330px;gap:18px}
@@ -145,12 +124,6 @@ body.embedded .head{margin-bottom:10px}
       <p class="sub">Place a chart screenshot, export at 1920 × 1080.</p>
     </div>
     <div class="acts">
-      <button type="button" class="btn guide" id="guideBtn">
-        <span class="guide-ico" aria-hidden="true">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-        </span>
-        Guide
-      </button>
       <button type="button" class="btn" id="loadBtn">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Load screenshot
@@ -280,22 +253,6 @@ body.embedded .head{margin-bottom:10px}
       </section>
     </aside>
   </div>
-</div>
-
-<div class="sheet" id="guideSheet" role="dialog" aria-modal="true" aria-label="Field guide" aria-hidden="true">
-  <div class="sheet-bar">
-    <span class="sheet-title">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1f9bf0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-      <span>Guide</span>
-    </span>
-    <div class="sheet-acts">
-      <button type="button" class="mini" id="guideClose">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        Close
-      </button>
-    </div>
-  </div>
-  <iframe class="sheet-frame" id="guideFrame" title="Trades card editor field guide"></iframe>
 </div>
 
 <script>
@@ -988,10 +945,6 @@ cv.addEventListener("wheel",function(e){
 },{passive:false});
 
 window.addEventListener("keydown",function(e){
-  if(guideOpen){
-    if(e.key==="Escape"){ closeGuide(); e.preventDefault(); }
-    return;                                   // the guide has the keyboard
-  }
   if(!S.hasImage) return;
   const tag=(e.target.tagName||"").toLowerCase();
   if(tag==="input"||tag==="textarea") return;
@@ -1062,48 +1015,6 @@ function resetDropText(){
   $("drop").querySelector("p").innerHTML='Tap Load screenshot<small>or drop a file here, or paste it</small>';
 }
 
-/* ------------------------------ guide sheet ------------------------------ */
-/* The iframe is only given a src the first time the guide is opened, so the
-   editor still starts as one document with nothing else to fetch. */
-let guideOpen=false, guideLoaded=false;
-function openGuide(){
-  if(!guideLoaded){ $("guideFrame").src="guide.html"; guideLoaded=true; }
-  $("guideSheet").classList.add("on");
-  $("guideSheet").setAttribute("aria-hidden","false");
-  document.body.style.overflow="hidden";
-  guideOpen=true;
-  setTimeout(function(){ try{ $("guideClose").focus(); }catch(e){} },30);
-}
-function closeGuide(){
-  $("guideSheet").classList.remove("on");
-  $("guideSheet").setAttribute("aria-hidden","true");
-  document.body.style.overflow="";
-  guideOpen=false;
-  try{ $("guideBtn").focus(); }catch(e){}
-}
-/* A button, not a link. There is no href to follow, so no combination of
-   host, sandbox or failed script can navigate the frame away from the editor. */
-$("guideBtn").onclick=openGuide;
-$("guideClose").onclick=closeGuide;
-/* If guide.html was not deployed alongside this page the frame would show the
-   host's 404 inside the panel, which reads like the editor is broken. Check
-   for the guide's own markup and say what is actually wrong instead. */
-$("guideFrame").addEventListener("load",function(){
-  try{
-    const d=$("guideFrame").contentDocument;
-    if(d && !d.querySelector(".deck")){
-      closeGuide();
-      showError("The guide isn't deployed next to this page. Upload guide.html alongside index.html.");
-    }
-  }catch(e){}
-});
-/* Esc pressed inside the guide can't reach this document, so the guide posts
-   it back out instead. */
-window.addEventListener("message",function(e){
-  const d=e.data;
-  if(d && typeof d==="object" && d.type==="guide:close") closeGuide();
-});
-
 $("loadBtn").onclick=function(){ $("file").click(); };
 $("file").onchange=function(e){ loadFile(e.target.files[0]); e.target.value=""; };
 
@@ -1114,7 +1025,6 @@ stage.addEventListener("drop",function(e){
   if(e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
 });
 window.addEventListener("paste",function(e){
-  if(guideOpen) return;
   const items=(e.clipboardData&&e.clipboardData.items)||[];
   for(let i=0;i<items.length;i++){
     if(items[i].type.indexOf("image/")===0){
