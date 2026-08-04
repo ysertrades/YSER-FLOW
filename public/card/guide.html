@@ -900,8 +900,9 @@ body{
    The outgoing slide leaves at once and the incoming fades up from the ground.
    Nothing is ever on top of anything else.
 
-   opacity is owned by the slide now, so contentIn only moves. Fading both
-   would multiply into a wash and land the text late and grey.
+   The slide owns the whole transition. Nothing inside it animates separately —
+   no rise, no stagger — because content that moves while the card beneath it is
+   still fading reads as two events rather than one.
 ────────────────────────────────────────────────────────────────────────── */
 .slide.on{
   visibility:visible; pointer-events:auto;
@@ -909,24 +910,12 @@ body{
 }
 @keyframes slideFade{ from{ opacity:0; } to{ opacity:1; } }
 
-.slide.on .panel{ animation:panelIn .28s cubic-bezier(.22,.9,.28,1) both; }
-@keyframes panelIn{
-  from{ transform:translateY(7px); }
-  to{ transform:none; }
-}
-.slide.on .panel > *{ animation:contentIn .3s cubic-bezier(.22,.9,.28,1) both; }
-@keyframes contentIn{
-  from{ transform:translateY(7px); }
-  to{ transform:none; }
-}
-.slide.on .panel > *:nth-child(1){ animation-delay:.02s; }
-.slide.on .panel > *:nth-child(2){ animation-delay:.06s; }
-.slide.on .panel > *:nth-child(3){ animation-delay:.09s; }
-.slide.on .panel > *:nth-child(4){ animation-delay:.12s; }
-.slide.on .panel > *:nth-child(n+5){ animation-delay:.14s; }
+/* Nothing moves. The panel and its children used to rise 7px into place on a
+   stagger, and against a card that is already fading in it read as the content
+   arriving separately from the card it sits on — the words settling after the
+   surface had landed. One fade, everything at once, no travel. */
 
 @media (prefers-reduced-motion:reduce){
-  .slide.on .panel, .slide.on .panel > *{ animation:none; }
   /* animation:none would drop the fill that holds opacity at 1 and leave the
      slide invisible, so it is pinned explicitly rather than merely unset. */
   .slide.on{ animation:none; opacity:1; }
