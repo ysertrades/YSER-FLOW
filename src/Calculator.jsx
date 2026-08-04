@@ -632,7 +632,14 @@ export default function Calculator({ hidden = false }) {
           background: linear-gradient(90deg,
             transparent, rgba(255,255,255,0.14), transparent);
         }
+        /* Two voices on one line, aligned on the baseline rather than the
+           box: the label in the system's, the name in a human one. That
+           contrast is the whole point — a name set in the same mono as the
+           numerals reads as another data field, not as someone signing. */
         .signature-mark {
+          display: flex;
+          align-items: baseline;
+          gap: 9px;
           font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
           font-size: 11px;
           font-weight: 600;
@@ -641,8 +648,13 @@ export default function Calculator({ hidden = false }) {
           color: rgba(255,255,255,0.34);
         }
         .signature-mark em {
-          font-style: normal;
-          color: rgba(255,255,255,0.52);
+          font-family: "Instrument Serif", Georgia, "Times New Roman", serif;
+          font-style: italic;
+          font-weight: 400;
+          font-size: 21px;
+          letter-spacing: 0;      /* the label's tracking must not follow it */
+          text-transform: none;   /* nor its caps — the name is lowercase */
+          color: rgba(255,255,255,0.62);
         }
         .panel-label {
           font-size: 11px;
@@ -787,7 +799,7 @@ export default function Calculator({ hidden = false }) {
           would sit on top of the thing people opened the app for. */}
       <div className="signature">
         <span className="signature-rule" aria-hidden="true" />
-        <span className="signature-mark">Built by <em>YSERTRADES</em></span>
+        <span className="signature-mark">Built by <em>yasser</em></span>
       </div>
       </div>
     </>
