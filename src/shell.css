@@ -135,11 +135,46 @@
            env(safe-area-inset-bottom, 0px)
            env(safe-area-inset-left, 0px);
   opacity: 1;
-  transition: opacity 0.18s ease;
+}
+
+/* The entering surface fades in ON TOP of the one it replaces, rather than the
+   two cross-dissolving. A true cross-fade would blend the editor's near-white
+   page with the calculator's near-black one and wash grey through the middle
+   of every switch; covering avoids that entirely — you only ever see the new
+   surface arriving over the old one, never a mix of both.
+
+   An animation, not a transition. A pane that has just been inserted has no
+   previous opacity to transition from, so a transition silently does nothing
+   and the pane snaps in at full opacity. Animations run on insertion. */
+.pane-on {
+  z-index: 101;
+  animation: paneIn 0.22s cubic-bezier(.4, 0, .2, 1) both;
+}
+@keyframes paneIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Leaving. An animation again, and for a less obvious reason than arriving:
+   removing .pane-on cancels an animation that was holding opacity at 1 through
+   its fill, and a transition to .pane-hidden's opacity:0 in that same style
+   change does not fire in Chromium — measured, not assumed. The pane cut out
+   instantly however the transition was declared. A keyframe is deterministic.
+
+   visibility only flips in the last 1%, so the pane stays composited for the
+   whole fade and then stops painting. Putting it in the `to` frame alone would
+   snap it mid-way, since discrete properties do not interpolate. */
+.pane-off {
+  pointer-events: none;
+  animation: paneOut 0.22s cubic-bezier(.4, 0, .2, 1) both;
+}
+@keyframes paneOut {
+  from { opacity: 1; visibility: visible; }
+  99%  { visibility: visible; }
+  to   { opacity: 0; visibility: hidden; }
 }
 
 /* Never display:none — that reloads the iframe in some WebKit versions and
-   would throw away the user's loaded screenshot. */
+   would throw away the user's loaded screenshot. This is the resting state for
+   a pane that has been preloaded but never opened: hidden with no animation at
+   all, so it cannot flash into view on the way to being hidden. */
 .pane-hidden {
   visibility: hidden;
   pointer-events: none;
@@ -155,5 +190,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tabbar, .pane, .tabbar-btn { transition: none; }
+  .tabbar-dock, .pane, .tabbar-btn { transition: none; }
+  .pane-on { animation: none; }
+  /* still needs to end up hidden, just without the fade */
+  .pane-off { animation: none; visibility: hidden; opacity: 0; }
 }

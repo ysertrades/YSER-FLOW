@@ -58,14 +58,42 @@ export default function App() {
     if (tab === "flow") window.scrollTo(0, flowScrollY.current);
   }, [tab]);
 
+  // display:none is not animatable, so hiding the calculator on the same frame
+  // the pane starts fading in leaves the pane fading in over nothing — you see
+  // the ground through it and it reads as a flash. It stays displayed until the
+  // incoming pane has finished covering it, then goes.
+  const [flowShown, setFlowShown] = useState(true);
+  useEffect(() => {
+    if (tab === "flow") { setFlowShown(true); return; }
+    if (reduced) { setFlowShown(false); return; }
+    const t = setTimeout(() => setFlowShown(false), 240);
+    return () => clearTimeout(t);
+  }, [tab, reduced]);
+
+  // Both panes mount themselves once the app has gone quiet. Deferring until a
+  // tab is opened meant the first switch paid to parse the whole document —
+  // the guide is 92KB and blocked the main thread for ~500ms, which is most of
+  // what the switch felt like. Idle time is free; the switch is not.
+  const [preload, setPreload] = useState(false);
+  useEffect(() => {
+    const arm = () => setPreload(true);
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(arm, { timeout: 3500 });
+      return () => cancelIdleCallback(id);
+    }
+    const t = setTimeout(arm, 2200);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <>
       <div className="bg-layer" aria-hidden="true" />
 
-      <Calculator hidden={tab !== "flow"} />
+      <Calculator hidden={!flowShown} />
 
       <StaticPane
         active={tab === "card"}
+        preload={preload}
         src="card/index.html"
         title="Trade card editor"
         background="#eeeeee"  /* the editor's own body colour, so its first
@@ -74,6 +102,7 @@ export default function App() {
       />
       <StaticPane
         active={tab === "guide"}
+        preload={preload}
         src="card/guide.html"
         title="Trades card editor field guide"
         background="#07090e"  /* the guide's own ground, behind its cards */
