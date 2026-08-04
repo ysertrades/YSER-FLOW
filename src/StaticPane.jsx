@@ -14,10 +14,12 @@ import { useEffect, useState } from "react";
  *     screenshot, crop, zoom and every control value alive across tab switches.
  *
  * The pane reserves space for the tab bar rather than letting the frame run
- * underneath it, which also keeps the guide's own bottom nav clear of it.
+ * underneath it, which keeps the editor's bottom controls reachable. Pass
+ * `immersive` when the bar hides itself on that tab — the guide does — and the
+ * reserve goes with it, instead of leaving a dead band nothing occupies.
  * Safe-area insets do not propagate into an iframe, so they are applied here.
  */
-export default function StaticPane({ active, src, title, background }) {
+export default function StaticPane({ active, src, title, background, immersive }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export default function StaticPane({ active, src, title, background }) {
 
   return (
     <div
-      className={`pane${active ? "" : " pane-hidden"}`}
+      className={`pane${immersive ? " pane-immersive" : ""}${active ? "" : " pane-hidden"}`}
       aria-hidden={!active}
     >
       <iframe

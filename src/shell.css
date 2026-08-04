@@ -54,18 +54,23 @@
   padding: 6px;
   border-radius: 999px;
 
-  /* Two deliberate deviations from the app's .glass token: 0.2 -> 0.32 because
+  /* Two deliberate deviations from the app's .glass token: 0.2 -> 0.38 because
      a bar floating over arbitrary content needs more self-separation than a
      panel sitting in the flow, and blur 7 -> 16 because 7px is tuned for a
      static panel and is imperceptible on an overlay. saturate() costs nothing
      and is what makes the coloured pills bloom under the bar rather than
-     smear. Everything else stays in-family. */
-  background: rgba(0, 0, 0, 0.32);
+     smear. Everything else stays in-family.
+
+     No drop shadow. It was doing the separating, most visibly over the
+     editor's near-white background; a slightly deeper fill and a brighter
+     hairline do that job without casting anything. What is left is an inset
+     top edge catching light — an edge, not a shadow, and the thing that keeps
+     the glass from reading as a flat sticker. */
+  background: rgba(0, 0, 0, 0.38);
   backdrop-filter: blur(16px) saturate(130%);
   -webkit-backdrop-filter: blur(16px) saturate(130%);
-  border: 0.4px solid rgba(176, 176, 176, 0.14);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45),
-              inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 
   transition: transform 0.26s cubic-bezier(.22, .8, .3, 1), opacity 0.2s ease;
   will-change: transform;
@@ -102,9 +107,8 @@
 }
 
 /* --------------------------------- panes ---------------------------------- */
-/* Reserves room for the bar rather than running underneath it. That keeps the
-   editor's bottom controls reachable and, on the guide, keeps its own bottom
-   nav pill clear of ours — which is why neither vendored file needed editing.
+/* Reserves room for the bar rather than running underneath it, which keeps the
+   editor's bottom controls reachable.
    Safe-area insets do not cross into an iframe, so they are applied here. */
 .pane {
   position: fixed;
@@ -119,6 +123,15 @@
            env(safe-area-inset-left, 0px);
   opacity: 1;
   transition: opacity 0.18s ease;
+}
+
+/* The guide hides the bar entirely while you read, so reserving 84px for it
+   there left a dead band with nothing in it — the guide's own nav pill floating
+   above a strip of empty ground. No bar, no reserve: the frame runs to the
+   bottom of the screen and the 14px margin under the guide's nav becomes the
+   only gap, which is what it was always meant to be. */
+.pane-immersive {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Never display:none — that reloads the iframe in some WebKit versions and
