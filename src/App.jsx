@@ -76,9 +76,7 @@ export default function App() {
         active={tab === "guide"}
         src="card/guide.html"
         title="Trades card editor field guide"
-        background="#161b24"  /* the guide's own surface, now that it is
-                                 edge to edge and the ground never shows */
-        immersive             /* no reserve: nothing is docked over it */
+        background="#07090e"  /* the guide's own ground, behind its cards */
       />
 
       {/* Hidden on the guide tab, using the same slide-away the bar already

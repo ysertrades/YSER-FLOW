@@ -13,13 +13,14 @@ import { useEffect, useState } from "react";
  *     hazard in some WebKit versions. This is what keeps the user's loaded
  *     screenshot, crop, zoom and every control value alive across tab switches.
  *
- * The pane reserves space for the tab bar rather than letting the frame run
- * underneath it, which keeps the editor's bottom controls reachable. Pass
- * `immersive` when the bar hides itself on that tab — the guide does — and the
- * reserve goes with it, instead of leaving a dead band nothing occupies.
+ * The pane always runs full height. It reserves nothing for the tab pill: the
+ * pill floats, content scrolls under it, and each vendored file carries its own
+ * bottom clearance so its last control still comes clear at the end of a
+ * scroll. Reserving space here instead turned the pill into a plinth with a
+ * band of dead ground beneath it.
  * Safe-area insets do not propagate into an iframe, so they are applied here.
  */
-export default function StaticPane({ active, src, title, background, immersive }) {
+export default function StaticPane({ active, src, title, background }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function StaticPane({ active, src, title, background, immersive }
 
   return (
     <div
-      className={`pane${immersive ? " pane-immersive" : ""}${active ? "" : " pane-hidden"}`}
+      className={`pane${active ? "" : " pane-hidden"}`}
       aria-hidden={!active}
     >
       <iframe

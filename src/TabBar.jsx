@@ -51,11 +51,15 @@ const TABS = [
 
 export default function TabBar({ tab, onChange, hidden }) {
   return (
-    <div className="tabbar-dock">
+    /* The hide class goes on the dock, not the bar. The bar carries the
+       backdrop-filter, and a filtered element that animates its own transform
+       flashes a bright rim along its edge in WebKit. Keep them separate. */
+    <div className={`tabbar-dock${hidden ? " tabbar-dock-hidden" : ""}`}>
       <nav
-        className={`tabbar${hidden ? " tabbar-hidden" : ""}`}
+        className="tabbar"
         role="tablist"
         aria-label="Sections"
+        aria-hidden={hidden}
       >
         {TABS.map(({ id, label, Icon }) => (
           <button
