@@ -30,7 +30,19 @@
     radial-gradient(120% 60% at 50% 100%, rgba(255,255,255,0.030), rgba(255,255,255,0) 70%);
 }
 
-/* --------------------------------- dock ---------------------------------- */
+/* --------------------------------- dock ----------------------------------
+   The dock moves; the bar does not. That split is the whole fix for the stray
+   light that flashed along the pill's edge as it slid away.
+
+   A backdrop-filtered element that is itself being transformed has to re-sample
+   its backdrop every frame while the compositor is also moving its layer, and
+   WebKit resolves that race by sampling stale or empty content — which paints
+   as a bright rim for a frame or two. Animating the wrapper instead means the
+   filtered element never changes its own transform, so there is nothing to
+   race. The opacity fade went with it for the same reason: fading a
+   backdrop-filtered layer composites it separately and lights the same edge.
+   It only ever slides now, which reads cleaner anyway.
+-------------------------------------------------------------------------- */
 .tabbar-dock {
   position: fixed;
   left: 0;
@@ -42,7 +54,14 @@
   z-index: 120;           /* .main-panel is a z-index:20 stacking context, so
                              .dropdown-menu's z-index:50 is local to it and its
                              effective root layer is 20. 120 is headroom. */
+  transition: transform 0.26s cubic-bezier(.22, .8, .3, 1);
+  will-change: transform;
 }
+
+.tabbar-dock-hidden {
+  transform: translateY(calc(var(--tabbar-h) + var(--tabbar-gap) + var(--safe-b) + 14px));
+}
+.tabbar-dock-hidden .tabbar { pointer-events: none; }
 
 /* ---------------------------------- bar ----------------------------------- */
 .tabbar {
@@ -54,32 +73,19 @@
   padding: 6px;
   border-radius: 999px;
 
-  /* Two deliberate deviations from the app's .glass token: 0.2 -> 0.38 because
-     a bar floating over arbitrary content needs more self-separation than a
-     panel sitting in the flow, and blur 7 -> 16 because 7px is tuned for a
-     static panel and is imperceptible on an overlay. saturate() costs nothing
-     and is what makes the coloured pills bloom under the bar rather than
-     smear. Everything else stays in-family.
+  /* blur(7px) — the app's own .glass token, unchanged. It reads here because
+     content passes underneath rather than stopping short of the pill, so the
+     filter always has something to act on.
 
-     No drop shadow. It was doing the separating, most visibly over the
-     editor's near-white background; a slightly deeper fill and a brighter
-     hairline do that job without casting anything. What is left is an inset
-     top edge catching light — an edge, not a shadow, and the thing that keeps
-     the glass from reading as a flat sticker. */
+     No drop shadow, and none coming back. A 1px hairline at low alpha does the
+     separating; the inset is a top edge catching light, not a cast shadow.
+     Whole pixels, not 0.5 — a fractional border lands between device pixels
+     and shimmers whenever the dock is mid-slide. */
   background: rgba(0, 0, 0, 0.38);
-  backdrop-filter: blur(16px) saturate(130%);
-  -webkit-backdrop-filter: blur(16px) saturate(130%);
-  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-
-  transition: transform 0.26s cubic-bezier(.22, .8, .3, 1), opacity 0.2s ease;
-  will-change: transform;
-}
-
-.tabbar-hidden {
-  transform: translateY(calc(var(--tabbar-h) + var(--tabbar-gap) + var(--safe-b) + 14px));
-  opacity: 0;
-  pointer-events: none;
 }
 
 .tabbar-btn {
@@ -106,32 +112,30 @@
   outline-offset: 2px;
 }
 
-/* --------------------------------- panes ---------------------------------- */
-/* Reserves room for the bar rather than running underneath it, which keeps the
-   editor's bottom controls reachable.
-   Safe-area insets do not cross into an iframe, so they are applied here. */
+/* --------------------------------- panes ----------------------------------
+   Every pane runs the full height of the screen. It used to reserve 84px at the
+   bottom for the tab pill, which turned the pill into a plinth: a solid band
+   content could not pass under, so it stopped short instead of scrolling
+   through. That band was the "block" — it cost the guide a chunk of its page
+   and gave the editor a strip of dead ground it could not use.
+
+   Nothing is reserved now. Content scrolls beneath the pill, which is what
+   gives the blur something to blur, and each vendored file keeps its own
+   bottom clearance so the last control still comes clear at the end of a
+   scroll. Safe-area insets do not cross into an iframe, so they land here.
+-------------------------------------------------------------------------- */
 .pane {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: transparent;   /* .bg-layer shows through the reserve strip, so
-                                the bar looks the same on every tab */
+  background: transparent;
   box-sizing: border-box;
   padding: env(safe-area-inset-top, 0px)
            env(safe-area-inset-right, 0px)
-           var(--tabbar-reserve)
+           env(safe-area-inset-bottom, 0px)
            env(safe-area-inset-left, 0px);
   opacity: 1;
   transition: opacity 0.18s ease;
-}
-
-/* The guide hides the bar entirely while you read, so reserving 84px for it
-   there left a dead band with nothing in it — the guide's own nav pill floating
-   above a strip of empty ground. No bar, no reserve: the frame runs to the
-   bottom of the screen and the 14px margin under the guide's nav becomes the
-   only gap, which is what it was always meant to be. */
-.pane-immersive {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Never display:none — that reloads the iframe in some WebKit versions and

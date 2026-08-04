@@ -226,15 +226,12 @@ function useClockAndSessions() {
 function SessionBlock({ session, index }) {
   const isOpen = session.status === "open";
   return (
+    // Open/closed is a class, not an inline style. Inline styles cannot be
+    // reached by a media query, and the glow needed to be quieter on a desktop
+    // than on a phone. The transition lives with it in CSS.
     <div
-      className="glass session-block"
-      style={{
-        animationDelay: `${index * 70}ms`,
-        borderColor: isOpen ? "rgba(74,222,128,0.55)" : "rgba(255,255,255,0.08)",
-        boxShadow: isOpen
-          ? "0 0 24px rgba(74,222,128,0.24), inset 0 1px 0 rgba(255,255,255,0.08)"
-          : "inset 0 1px 0 rgba(255,255,255,0.06)",
-      }}
+      className={`glass session-block ${isOpen ? "session-open" : "session-closed"}`}
+      style={{ animationDelay: `${index * 70}ms` }}
     >
       <span className={`pill session-pill ${isOpen ? "pill-open" : "pill-closed"}`}>
         {isOpen ? "OPEN" : "CLOSED"}
@@ -465,7 +462,8 @@ export default function Calculator({ hidden = false }) {
           opacity: 0;
           transform: translateY(10px);
           animation: fadeUp 0.45s ease forwards;
-          transition: box-shadow 0.6s ease, border-color 0.6s ease;
+          transition: box-shadow 0.9s cubic-bezier(.33,0,.2,1),
+                      border-color 0.9s cubic-bezier(.33,0,.2,1);
           outline: none;
           display: flex;
           flex-direction: column;
@@ -474,10 +472,51 @@ export default function Calculator({ hidden = false }) {
         }
         .session-block:hover, .session-block:focus, .session-block:active { outline: none; }
         @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+        /* A session opening or closing should be a light coming up or going
+           down, not a switch flipping. The glow used to jump because the two
+           states had a different NUMBER of shadow layers — one closed, two open
+           — and box-shadow cannot interpolate between lists of unequal length,
+           so it snapped no matter what transition was set.
+
+           Both states carry two layers now. Closed just holds the glow at zero
+           alpha and zero radius, which is a value the open state can travel to
+           and from, so the same 0.9s ease covers the whole fade in both
+           directions. Nothing else about the block changes. */
+        .session-open {
+          border-color: rgba(74,222,128,0.55);
+          box-shadow: 0 0 24px rgba(74,222,128,0.24),
+                      inset 0 1px 0 rgba(255,255,255,0.08);
+        }
+        .session-closed {
+          border-color: rgba(255,255,255,0.08);
+          box-shadow: 0 0 0 rgba(74,222,128,0),
+                      inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+
+        /* Same green, less of it, once there is a pointer. A 0.4px border lands
+           on a fraction of a device pixel: a phone at 3x renders it as a faint
+           hairline, a desktop at 1x rounds it up to a solid line, so identical
+           values read roughly twice as loud on a computer. These are the values
+           that MATCH the phone rather than exceed it. */
+        @media (hover: hover) and (pointer: fine) {
+          .session-open {
+            border-color: rgba(74,222,128,0.34);
+            box-shadow: 0 0 18px rgba(74,222,128,0.15),
+                        inset 0 1px 0 rgba(255,255,255,0.08);
+          }
+        }
+
         .session-pill { position: absolute; top: 15px; right: 16px; }
         .session-name-row { padding-right: 80px; }
 
-        .pill { font-size: 10px; font-weight: 800; letter-spacing: 0.04em; padding: 3px 9px; border-radius: 999px; }
+        /* the status chip fades with the glow rather than cutting */
+        .pill {
+          font-size: 10px; font-weight: 800; letter-spacing: 0.04em;
+          padding: 3px 9px; border-radius: 999px;
+          transition: background 0.9s cubic-bezier(.33,0,.2,1),
+                      color 0.9s cubic-bezier(.33,0,.2,1);
+        }
         .pill-open { background: rgba(74,222,128,0.18); color: #4ADE80; }
         .pill-closed { background: rgba(255,69,58,0.14); color: #ff6961; }
 

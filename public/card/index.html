@@ -92,11 +92,23 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
   .track,.fill{height:7px;border-radius:4px}
   .thumb{width:26px;height:26px}
 }
-body.embedded .wrap{padding:10px}
+/* Framed, a tab pill floats over the bottom of this page. It used to stand on a
+   band the host reserved, which content could not scroll through; now it hovers
+   and the page runs the full height under it. --pill-clear is what replaces
+   that band: scroll clearance at the foot of the page, so the last control
+   still comes out from under the pill at the end of a scroll, and nothing is
+   walled off on the way down. Only applied when framed — standalone there is
+   no pill. */
+body.embedded{--pill-clear:84px}
+body.embedded .wrap{padding:10px 10px calc(10px + var(--pill-clear))}
 body.embedded .sub{display:none}
 body.embedded h1{font-size:15px}
 body.embedded .head{margin-bottom:10px}
-@media (min-width:1024px){ body.embedded .stage{max-width:calc((100vh - 190px) * 1.7778)} }
+@media (min-width:1024px){
+  body.embedded .stage{max-width:calc((100vh - 190px) * 1.7778)}
+  /* the sticky side panel is viewport-tall, so it has to give the pill room too */
+  body.embedded .panel{max-height:calc(100vh - 40px - var(--pill-clear))}
+}
 .result{display:none;margin-top:8px;padding:10px;border-radius:10px;background:#fff;border:1px solid #e4e4e4;
   align-items:center;gap:10px;flex-wrap:wrap}
 .result.on{display:flex}

@@ -800,6 +800,14 @@
   --shade:0 6px 22px rgba(0,0,0,.55), 0 28px 72px rgba(0,0,0,.5);
   --shade-sm:0 2px 12px rgba(0,0,0,.5);
 
+  /* The floating nav's footprint. --nav-clear is scroll padding at the foot of
+     every slide: content passes under the pill all the way down and only comes
+     to rest clear of it at the very end. Not a reserved band — the deck still
+     owns the full height. */
+  --nav-gap:14px;
+  --nav-h:44px;
+  --nav-clear:calc(var(--nav-gap) + var(--nav-h) + 24px + env(safe-area-inset-bottom, 0px));
+
   --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
 }
@@ -808,14 +816,15 @@
 /* Column layout: the deck takes the space that is left and the nav sits below
    it in flow, so the pill can never come to rest on top of the reading text
    the way a fixed bar does. */
-/* The deck is edge to edge. The card used to float inside the viewport with a
-   radius and a margin all round, which on a phone read as a cropped square
-   rather than a page — and inside the shell it was a box inside a box. So the
-   card surface IS the page now: body takes the card's colour so there is no
-   seam at either end of a scroll, and the only thing left inset is the text
-   column itself. Nothing about the type or the spacing inside the card moved. */
+/* The card was never the problem — the plinth under the nav was. The nav used
+   to sit in flow as the last item of this column, so it owned a solid band at
+   the bottom that the deck could not reach into and content could not scroll
+   through. That band is what made the page feel cropped.
+
+   The nav floats now (see .nav), the deck takes the full height, and slides
+   scroll underneath a pill you can see through. */
 body{
-  margin:0; background:var(--glass); color:var(--ink);
+  margin:0; background:var(--ground); color:var(--ink);
   font-family:var(--sans); font-size:15px; line-height:1.62;
   -webkit-font-smoothing:antialiased; overflow:hidden;
   height:100vh; height:100dvh;
@@ -840,13 +849,17 @@ body{
    long slide could not be scrolled back to its first line. .inner does the
    centring instead, via min-height:100%, which simply stops applying once the
    content is taller than the frame. */
+/* --nav-clear is the pill's footprint. It is scroll padding, not a reserved
+   band: content passes under the pill the whole way down and only comes to
+   rest clear of it at the very end of the scroll. */
 .slide{
   position:absolute; inset:0;
   display:block; overflow-y:auto; overflow-x:hidden;
-  padding:0;
+  padding:20px 16px var(--nav-clear);
   -webkit-overflow-scrolling:touch;
   visibility:hidden; pointer-events:none; opacity:0;
 }
+@media (min-width:760px){ .slide{ padding:26px 20px var(--nav-clear); } }
 
 /* ── One card, new contents ───────────────────────────────────────────────
    Two earlier attempts each had a tell. Fading the panel showed the chart
@@ -892,14 +905,12 @@ body{
 /* ═══════════════════════ GLASS ═══════════════════════
    The app draws its panels as rgba(252,252,252,0.62) with a 1.4px
    hairline at rgba(0,0,0,0.055) and a 20px/5px shadow. Same recipe. */
-/* No frame: no radius, no border, no shadow. The padding stays exactly as it
-   was — it is what holds the text off the screen edge now that the slide has
-   none of its own, so the reading measure is unchanged. */
 .panel{
   background:var(--glass);
-  border:0;
-  border-radius:0;
-  box-shadow:none;
+  border:1px solid var(--hair);
+  border-radius:22px;
+  /* the inset hairline is light catching the top edge of the card */
+  box-shadow:var(--shade), inset 0 1px 0 var(--edge);
   padding:clamp(20px,3.4vw,46px);
   display:flex; flex-direction:column; gap:clamp(16px,2.1vw,26px);
 }
@@ -1222,16 +1233,30 @@ input[type="range"]::-moz-range-thumb{
 .size.on small{color:var(--signal);}
 
 /* ═══════════════════════ NAV ═══════════════════════ */
-/* The deck surface is the light note now, so the pill inverts: it used to be
-   the lifted chip on a dark ground, it is now the dark chip on a lit field.
-   Same separation, opposite direction, no colour introduced. */
+/* Floating, not standing on anything. As a flow item it owned a band at the
+   bottom of the column that the deck could not use and content could not
+   scroll through; fixed, it hovers over the deck and the slides run their full
+   height beneath it.
+
+   That is also what makes the glass real: backdrop-filter over a flat colour
+   samples a constant and does nothing, so a pill with a reserved strip under it
+   was only ever a dark chip. With the card sliding past underneath, blur(7px)
+   — the same value the editor uses — finally has something to act on.
+
+   No drop shadow. A hairline and the inset top edge carry the separation. */
 .nav{
-  position:relative; z-index:5; flex:none;
-  align-self:center; margin:0 auto 14px;
+  position:fixed; z-index:5;
+  /* centred by auto margins rather than translateX(-50%): a transform on a
+     backdrop-filtered element is the exact combination that flashes an edge. */
+  left:0; right:0; margin-inline:auto; width:max-content;
+  bottom:calc(var(--nav-gap) + env(safe-area-inset-bottom, 0px));
   display:flex; align-items:center; gap:5px;
   padding:6px 8px; border-radius:999px;
-  background:var(--ground); border:1px solid var(--hair-2);
-  box-shadow:var(--shade), inset 0 1px 0 var(--edge);
+  background:rgba(9,12,18,.62);
+  backdrop-filter:blur(7px);
+  -webkit-backdrop-filter:blur(7px);
+  border:1px solid var(--hair-2);
+  box-shadow:inset 0 1px 0 var(--edge);
   max-width:calc(100vw - 24px);
 }
 
@@ -1280,6 +1305,7 @@ input[type="range"]::-moz-range-thumb{
    only thing there is to tap — so they get a proper finger-sized target
    rather than the 30px that suited a pointer. */
 @media (max-width:520px){
+  :root{--nav-h:54px;}          /* 5px padding + 44px targets + 5px */
   .dots{display:none;}
   .nav{padding:5px 6px; gap:2px;}
   .navbtn{width:44px; height:44px;}
@@ -1297,7 +1323,7 @@ input[type="range"]::-moz-range-thumb{
   h2{font-size:clamp(23px,6.4vw,30px); letter-spacing:-.026em;}
   .lead{font-size:15.5px; line-height:1.5;}
   .sub{font-size:12px;}
-  .panel{gap:15px;}
+  .panel{gap:15px; border-radius:18px;}
   .two{gap:18px;}
   .col{gap:13px;}
   .head{gap:7px;}
