@@ -224,9 +224,12 @@
             <div class="spec tight">
               <div class="row">
                 <span class="lab">Controls</span>
-                <p>Each side takes <span class="k">−1</span>, <span class="k">+1</span>,
-                  <span class="k">+10</span>, or a typed value. Opposite sides cannot meet —
-                  at least 20&nbsp;px of image always survives.</p>
+                <p>Each side has <span class="k">−</span>, <span class="k">+</span> and
+                  <span class="k">+10</span>, and a box you can type into. With the cursor
+                  in that box, <kbd>↑</kbd> and <kbd>↓</kbd> step the trim 1&nbsp;px —
+                  these are the only arrow keys in the editor that trim rather than move.
+                  Opposite sides cannot meet — at least 20&nbsp;px of image always
+                  survives.</p>
               </div>
             </div>
           </div>
@@ -626,13 +629,19 @@
           </div>
           <div class="row">
             <span class="lab">Position</span>
-            <p>Offset in card pixels from centre. Drag, arrow keys, or ±1 and ±10 buttons.
+            <p>Offset in card pixels from centre. Drag the canvas, press the arrow keys, or
+              use the <span class="k">←</span> <span class="k">→</span> <span class="k">↑</span>
+              <span class="k">↓</span> buttons for 1&nbsp;px and
+              <span class="k">←10</span> <span class="k">10→</span> for 10.
               <span class="k">Centre</span> zeroes it without changing zoom.</p>
           </div>
           <div class="row">
             <span class="lab">Trim edges</span>
-            <p>Per-side crop measured in source pixels, applied before framing. Opposite
-              sides are prevented from meeting — 20&nbsp;px of image always remains.</p>
+            <p>Per-side crop measured in source pixels, applied before framing.
+              <span class="k">−</span> and <span class="k">+</span> step 1&nbsp;px,
+              <span class="k">+10</span> steps ten, or type a number —
+              <kbd>↑</kbd> <kbd>↓</kbd> inside that box also step it by 1. Opposite sides
+              are prevented from meeting — 20&nbsp;px of image always remains.</p>
           </div>
           <div class="row">
             <span class="lab">Export quality</span>
@@ -671,13 +680,18 @@
             <table class="keys">
               <tbody>
                 <tr><td><kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>V</kbd></td><td>Paste a screenshot from the clipboard</td></tr>
-                <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Nudge the image 1&nbsp;px</td></tr>
-                <tr><td><kbd>Shift</kbd> + arrow</td><td>Nudge 10&nbsp;px</td></tr>
+                <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></td><td>Move the image 1&nbsp;px. They move it — they never trim.</td></tr>
+                <tr><td><kbd>Shift</kbd> + arrow</td><td>Move 10&nbsp;px</td></tr>
                 <tr><td><kbd>Shift</kbd> + scroll</td><td>Fine zoom — 0.2% a notch instead of 2%</td></tr>
+                <tr><td><kbd>↑</kbd> <kbd>↓</kbd> <span class="fine">in a trim box</span></td><td>Step that side's trim 1&nbsp;px. The one exception below.</td></tr>
               </tbody>
             </table>
-            <p class="fine">Arrow keys are ignored while you are typing in a field, so a
-              custom timeframe never moves the frame.</p>
+            <p class="fine">While the cursor is in a field the arrows stop moving the frame,
+              so typing a custom timeframe or a username never shifts your screenshot. The
+              four trim boxes are the exception, and only because they hold numbers:
+              <kbd>↑</kbd> and <kbd>↓</kbd> there step that edge 1&nbsp;px, and
+              <kbd>Shift</kbd> makes no difference — it is still 1. Click off the box and
+              the arrows go back to moving the image.</p>
           </div>
 
           <div class="col">
