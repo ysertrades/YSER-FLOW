@@ -605,6 +605,45 @@ export default function Calculator({ hidden = false }) {
           position: relative;
           z-index: 1;
         }
+
+        /* Deliberately no accent. #0a84ff means "active" in this app — it is
+           the tab bar and the numerals — so a signature in it would read as
+           something you can tap. Grey is legible, ignorable, and does not
+           claim to be interactive. Mono, because everything structural here
+           already is; tracked out, because at 11px this is a label. */
+        /* 14vh, not a fixed gap. At 34px the signature came to rest just
+           under the floating pill on a tall phone and bled out from behind
+           it — legible enough to look like a glitch, not enough to read.
+           Tying the gap to viewport height puts it below the fold at every
+           size I can test, so it is something you scroll to rather than
+           something crowding the tab bar. Generous separation is right for
+           a footer anyway. */
+        .signature {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 13px;
+          width: 100%;
+          margin-top: max(56px, 14vh);
+        }
+        .signature-rule {
+          width: 132px;
+          height: 1px;
+          background: linear-gradient(90deg,
+            transparent, rgba(255,255,255,0.14), transparent);
+        }
+        .signature-mark {
+          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.34);
+        }
+        .signature-mark em {
+          font-style: normal;
+          color: rgba(255,255,255,0.52);
+        }
         .panel-label {
           font-size: 11px;
           font-weight: 700;
@@ -741,6 +780,14 @@ export default function Calculator({ hidden = false }) {
         )}
 
         <button className="reset-btn" onClick={reset}>Reset Inputs</button>
+      </div>
+
+      {/* Authorship, at the end of the scroll. Not in the header: the launch
+          intro already says YSER FLOW, and a credit above the live sessions
+          would sit on top of the thing people opened the app for. */}
+      <div className="signature">
+        <span className="signature-rule" aria-hidden="true" />
+        <span className="signature-mark">Built by <em>YSERTRADES</em></span>
       </div>
       </div>
     </>
