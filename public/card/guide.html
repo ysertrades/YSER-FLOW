@@ -211,12 +211,85 @@
     </div>
   </section>
 
+  <!-- ══════════════════════════ 04 GROUND ══════════════════════════ -->
+  <section class="slide" data-title="Ground">
+    <div class="inner">
+      <article class="panel">
+        <header class="head">
+          <div class="eyebrow"><span class="num">02</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Choose the <em>ground</em></h2>
+          <p class="sub">Every colour on the card derives from it — which is why it comes before the labels, not after.</p>
+        </header>
+
+        <p class="wide-p">Six presets, a picker and a hex field, starting at
+          <span class="k">#F5F5F5</span>. Pick anything else and every part of the overlay
+          re-derives itself rather than leaving dark type stranded on a dark card.</p>
+
+        <div class="grounds" id="grounds"></div>
+
+        <div class="spec trio">
+          <div class="row">
+            <span class="lab">Glass</span>
+            <p>Drawn <em>from</em> the background, so it keeps the same relationship to it
+              at every colour.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Type</span>
+            <p>Keeps a trace of the background's hue instead of snapping to pure black or
+              white, and flips to light once the ground is dark. Every preset clears 14:1.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Session pill &amp; edges</span>
+            <p>The pill inverts on dark grounds; hairlines and shadows swap with it. That is
+              what keeps a panel legible once the card goes black.</p>
+          </div>
+        </div>
+
+        <div class="act"><span class="tag">Then</span><span class="kicker">How far off it</span><span class="rule"></span></div>
+
+        <h3 class="h3">Overlay tone</h3>
+        <p class="wide-p">The control most worth learning, because a bright chart and a dark
+          chart want opposite answers. Tone moves the glass relative to the ground — up
+          toward white, or down into a soft grey. Default <span class="k">+50</span>.</p>
+
+        <div class="tones" id="tones"></div>
+
+        <p class="fine">The range is read off whichever ground you picked. Pure white is the
+          only one with no room above it — there the separation comes from below instead, so
+          the glass never dissolves into the card.</p>
+
+        <div class="two">
+          <div class="col">
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>Tone moves fill <em>and</em> opacity together, and each element keeps its
+                own weight — the symbol capsule always reads stronger than the rail behind
+                it, the timeframe pill stronger than both. You cannot knock the three out of
+                balance.</p>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="spec tight">
+              <div class="row">
+                <span class="lab">Overlay size</span>
+                <p>Scales every piece of furniture together, 80–120%, from
+                  <span class="k">100%</span>. Tabs, badge, capsule, pill and wordmark keep
+                  their proportions to each other — one number, no drift.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
   <!-- ══════════════════════════ 03 LABEL ══════════════════════════ -->
   <section class="slide" data-title="Label">
     <div class="inner">
       <article class="panel">
         <header class="head">
-          <div class="eyebrow"><span class="num">02</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <div class="eyebrow"><span class="num">03</span><span class="kicker">Workflow</span><span class="rule"></span></div>
           <h2>Label it, then <em>sign</em> it</h2>
           <p class="sub">Set once. All of it survives the next screenshot, so a run of cards only pays for this here.</p>
         </header>
@@ -298,79 +371,6 @@
                 Both render in the card's ink, not brand colour, so the signature stays part
                 of the card instead of competing with it.</figcaption>
             </figure>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════ 04 GROUND ══════════════════════════ -->
-  <section class="slide" data-title="Ground">
-    <div class="inner">
-      <article class="panel">
-        <header class="head">
-          <div class="eyebrow"><span class="num">03</span><span class="kicker">Workflow</span><span class="rule"></span></div>
-          <h2>Choose the <em>ground</em></h2>
-          <p class="sub">Every colour on the card derives from it — including how far off it the glass floats.</p>
-        </header>
-
-        <p class="wide-p">Six presets, a picker and a hex field, starting at
-          <span class="k">#F5F5F5</span>. Pick anything else and every part of the overlay
-          re-derives itself rather than leaving dark type stranded on a dark card.</p>
-
-        <div class="grounds" id="grounds"></div>
-
-        <div class="spec trio">
-          <div class="row">
-            <span class="lab">Glass</span>
-            <p>Drawn <em>from</em> the background, so it keeps the same relationship to it
-              at every colour.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Type</span>
-            <p>Keeps a trace of the background's hue instead of snapping to pure black or
-              white, and flips to light once the ground is dark. Every preset clears 14:1.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Session pill &amp; edges</span>
-            <p>The pill inverts on dark grounds; hairlines and shadows swap with it. That is
-              what keeps a panel legible once the card goes black.</p>
-          </div>
-        </div>
-
-        <div class="act"><span class="tag">Then</span><span class="kicker">How far off it</span><span class="rule"></span></div>
-
-        <h3 class="h3">Overlay tone</h3>
-        <p class="wide-p">The control most worth learning, because a bright chart and a dark
-          chart want opposite answers. Tone moves the glass relative to the ground — up
-          toward white, or down into a soft grey. Default <span class="k">+50</span>.</p>
-
-        <div class="tones" id="tones"></div>
-
-        <p class="fine">The range is read off whichever ground you picked. Pure white is the
-          only one with no room above it — there the separation comes from below instead, so
-          the glass never dissolves into the card.</p>
-
-        <div class="two">
-          <div class="col">
-            <div class="note">
-              <span class="note-lab">Good to know</span>
-              <p>Tone moves fill <em>and</em> opacity together, and each element keeps its
-                own weight — the symbol capsule always reads stronger than the rail behind
-                it, the timeframe pill stronger than both. You cannot knock the three out of
-                balance.</p>
-            </div>
-          </div>
-
-          <div class="col">
-            <div class="spec tight">
-              <div class="row">
-                <span class="lab">Overlay size</span>
-                <p>Scales every piece of furniture together, 80–120%, from
-                  <span class="k">100%</span>. Tabs, badge, capsule, pill and wordmark keep
-                  their proportions to each other — one number, no drift.</p>
-              </div>
-            </div>
           </div>
         </div>
       </article>
@@ -507,8 +507,8 @@
             or <span class="kg"><kbd>⌘</kbd> <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>4</kbd></span> on a Mac. Do not save the file; the clipboard is the whole point.</span></li>
           <li><b>Paste</b><span><kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>V</kbd> anywhere on the page.</span></li>
           <li><b>Fill, then trim</b><span>Hit <span class="k">Fill</span>, then trim the edge with the half candle. Two clicks, no drift.</span></li>
+          <li><b>Set the ground</b><span>Bright chart, push tone negative. Dark chart, leave it lifted. Every overlay colour follows from here.</span></li>
           <li><b>Set the labels</b><span>Symbol, session, timeframe — and your logo and handle, once. All of it persists between screenshots.</span></li>
-          <li><b>Check the tone</b><span>Bright chart, push tone negative. Dark chart, leave it lifted.</span></li>
           <li><b>Export</b><span>4K is the default and the right answer almost always.</span></li>
         </ol>
 
