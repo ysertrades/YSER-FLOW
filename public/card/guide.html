@@ -503,8 +503,9 @@
 
         <ol class="recipe">
           <li><b>Snip the chart</b><span><kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>S</kbd> on TradingView copies the
-            chart straight to the clipboard. Without it, snip with the OS — <span class="kg"><kbd>Win</kbd> <kbd>Shift</kbd> <kbd>S</kbd></span>,
-            or <span class="kg"><kbd>⌘</kbd> <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>4</kbd></span> on a Mac. Do not save the file; the clipboard is the whole point.</span></li>
+            chart straight to the clipboard. Or snip with the OS — <span class="kg"><kbd>Win</kbd> <kbd>Shift</kbd> <kbd>S</kbd></span>,
+            or <span class="kg"><kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>4</kbd></span> on a Mac. Windows puts that on the clipboard;
+            a Mac saves it to the desktop unless you add <kbd>Ctrl</kbd>.</span></li>
           <li><b>Paste</b><span><kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>V</kbd> anywhere on the page.</span></li>
           <li><b>Fill, then trim</b><span>Hit <span class="k">Fill</span>, then trim the edge with the half candle. Two clicks, no drift.</span></li>
           <li><b>Set the ground</b><span>Bright chart, push tone negative. Dark chart, leave it lifted. Every overlay colour follows from here.</span></li>
@@ -861,7 +862,16 @@ kbd{
   line-height:1.5; padding:2px 7px; border-radius:6px;
   border:1px solid var(--hair); border-bottom-width:2px;
   color:var(--ink); background:var(--glass-2); white-space:nowrap;
+  /* A chip stands 23.5px tall inside a 20.8px line box, so two chords wrapping
+     onto consecutive lines had measured 0.0px between them — bottom edge
+     touching top edge. An inline-block's margin box drives the line box, so this
+     is what separates stacked chords without loosening every line of prose that
+     has no chips in it. */
+  margin-block:4px;
 }
+/* The key tables set their own row rhythm with td padding and a hairline, and
+   every row there is a single line, so the chips need no help. */
+.keys td kbd{margin-block:0;}
 /* Holds a chord together. A key group split across a line break reads as two
    separate shortcuts, which is exactly the kind of small lie this guide avoids. */
 .kg{white-space:nowrap;}
