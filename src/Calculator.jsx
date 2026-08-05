@@ -43,11 +43,19 @@ const PAIRS_DATA = PAIR_ORDER.map((symbol) => {
   };
 });
 
-function calculateContracts(riskAmount, stopPoints) {
-  if (!riskAmount || !stopPoints) return [];
+/* The stop is entered in TICKS, which is the unit the contract is actually
+   priced in — risk per contract is ticks x tickValue, with nothing to convert.
+
+   It used to take points and divide by tickSize to get here, and that made the
+   same field mean wildly different things per instrument: a realistic NQ stop
+   is 20 points while a realistic SI stop is 0.20, two orders of magnitude apart
+   in one input. In ticks a normal stop is double digits on every instrument in
+   the list. */
+function calculateContracts(riskAmount, stopTicks) {
+  if (!riskAmount || !stopTicks) return [];
 
   return PAIRS_DATA.map((pair) => {
-    const ticks = stopPoints / pair.tickSize;
+    const ticks = stopTicks;
 
     // STANDARD CONTRACT
     const standardRiskPerContract = ticks * pair.tickValue;
@@ -259,7 +267,11 @@ function SymbolDropdown({ selected, onSelect }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const spec = SPECS[selected];
-  const dollarPerPoint = spec.microTickValue / spec.tickSize;
+  /* microTickValue IS the dollars-per-tick of the micro contract, so with the
+     stop now in ticks this needs no arithmetic at all — the division existed
+     only to turn it into a per-point figure. Same contract as before, same
+     number source; only the unit changed. */
+  const dollarPerTick = spec.microTickValue;
 
   useEffect(() => {
     function handleClick(e) {
@@ -274,7 +286,7 @@ function SymbolDropdown({ selected, onSelect }) {
       <button className="glass symbol-pill" onClick={() => setOpen((o) => !o)}>
         <span className="font-bold text-white">{selected}</span>
         <span className="text-white/35 mx-1.5">•</span>
-        <span className="text-white/70">${dollarPerPoint.toFixed(2).replace(/\.00$/, "")}/pt</span>
+        <span className="text-white/70">${dollarPerTick.toFixed(2).replace(/\.00$/, "")}/tick</span>
         <svg
           width="11" height="11" viewBox="0 0 24 24" fill="none"
           style={{ marginLeft: 8, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }}
@@ -287,7 +299,7 @@ function SymbolDropdown({ selected, onSelect }) {
         <div className="glass dropdown-menu">
           {PAIR_ORDER.map((pair) => {
             const s = SPECS[pair];
-            const dpp = s.microTickValue / s.tickSize;
+            const dpt = s.microTickValue;
             const isSel = pair === selected;
             return (
               <div
@@ -299,7 +311,7 @@ function SymbolDropdown({ selected, onSelect }) {
                   <div className="text-[13.5px] font-semibold text-white">{pair}</div>
                   <div className="text-[11px] text-white/40">{s.label}</div>
                 </div>
-                <div className="text-[12px] text-white/55">${dpp.toFixed(2).replace(/\.00$/, "")}/pt</div>
+                <div className="text-[12px] text-white/55">${dpt.toFixed(2).replace(/\.00$/, "")}/tick</div>
               </div>
             );
           })}
@@ -737,12 +749,15 @@ export default function Calculator({ hidden = false }) {
         </div>
 
         <div className="field-wrap" style={{ marginBottom: 0 }}>
-          <label className="field-label">Stop (pts)</label>
+          <label className="field-label">Stop (ticks)</label>
           <input
             className="input-field"
             type="number"
             inputMode="decimal"
-            placeholder="e.g. 20"
+            /* 80 ticks is a realistic stop on every instrument here — 20 points
+               of NQ, 8.0 of GC, 0.40 of SI. One placeholder can be honest for
+               all six only because the unit is ticks. */
+            placeholder="e.g. 80"
             value={stopLoss}
             onChange={(e) => setStopLoss(e.target.value)}
           />
