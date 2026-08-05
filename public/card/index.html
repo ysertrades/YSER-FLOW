@@ -167,6 +167,26 @@ body.embedded .head{margin-bottom:10px}
     </div>
 
     <aside class="panel">
+      <!-- Background leads the panel, and that is the point rather than a
+           reordering. Every overlay colour is derived from it: the glass keeps
+           its relationship to whatever you pick, the type keeps a trace of its
+           hue and flips to light on dark grounds, the session pill inverts and
+           the hairlines swap with it. Choosing it after the labels meant picking
+           colours the next change would recompute. The field guide reads in the
+           same order. -->
+      <section class="sec">
+        <div class="sech"><h3 class="lab">Background</h3><span class="hint" id="bgHint">#F5F5F5</span></div>
+        <div class="row" id="bgRow"></div>
+        <div class="row" style="margin-top:8px">
+          <label class="pick" id="pickWrap">
+            <input type="color" id="bgPicker" value="#f5f5f5" aria-label="Custom background colour">
+          </label>
+          <input class="field hexf" id="bgHex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Background hex">
+          <button type="button" class="mini" id="bgReset">Reset</button>
+        </div>
+        <p class="note">Overlays re-derive from whatever you pick — the glass keeps the same relationship to the background, and the labels flip to stay readable on dark colours.</p>
+      </section>
+
       <section class="sec">
         <div class="sech"><h3 class="lab">Symbol</h3></div>
         <p class="cap">Futures</p>
@@ -221,19 +241,6 @@ body.embedded .head{margin-bottom:10px}
         <div class="sech"><h3 class="lab">Trim edges</h3><span class="hint" id="sizeHint">—</span></div>
         <div id="edges"></div>
         <p class="note">Cuts in source pixels, so you can shave a half candle off without the frame jumping.</p>
-      </section>
-
-      <section class="sec">
-        <div class="sech"><h3 class="lab">Background</h3><span class="hint" id="bgHint">#F5F5F5</span></div>
-        <div class="row" id="bgRow"></div>
-        <div class="row" style="margin-top:8px">
-          <label class="pick" id="pickWrap">
-            <input type="color" id="bgPicker" value="#f5f5f5" aria-label="Custom background colour">
-          </label>
-          <input class="field hexf" id="bgHex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="Background hex">
-          <button type="button" class="mini" id="bgReset">Reset</button>
-        </div>
-        <p class="note">Overlays re-derive from whatever you pick — the glass keeps the same relationship to the background, and the labels flip to stay readable on dark colours.</p>
       </section>
 
       <section class="sec">
