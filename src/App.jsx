@@ -105,7 +105,10 @@ export default function App() {
         preload={preload}
         src="card/guide.html"
         title="Trades card editor field guide"
-        background="#07090e"  /* the guide's own ground, behind its cards */
+        background="#08090C"  /* the guide's own ground, under its light pools —
+                                 keep in step with --ground in card/guide.html or
+                                 the first paint steps colour before the document
+                                 arrives */
       />
 
       {/* Hidden on the guide tab, using the same slide-away the bar already
