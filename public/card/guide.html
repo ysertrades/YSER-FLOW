@@ -12,71 +12,69 @@
 <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
 <div class="deck" id="deck">
 
-  <!-- ══════════════════════════ COVER ══════════════════════════ -->
+  <!-- ═══════════════════ COVER · THE RULE ═══════════════════ -->
+  <!-- Identity and argument on one slide. The hero card is not decoration here:
+       it is the live proof of the claim underneath it, so separating the two put
+       a swipe between a promise and its evidence. -->
   <section class="slide" data-title="Cover">
     <div class="inner">
       <article class="panel cover">
-        <div class="cover-l">
-          <header class="head">
-            <div class="eyebrow">
-              <span class="kicker">Field guide</span><span class="rule"></span>
-            </div>
-            <h1>Trades&nbsp;card editor</h1>
-            <p class="lead">One HTML file that turns a raw chart screenshot into a clean
-              1920&nbsp;×&nbsp;1080 trade card — session tabs, symbol badge, timeframe pill
-              and wordmark — and exports it at up to 7680&nbsp;×&nbsp;4320.</p>
-          </header>
 
-          <div class="facts">
-            <div class="fact"><b>1</b><span>file</span></div>
-            <div class="fact"><b>0</b><span>dependencies</span></div>
-            <div class="fact"><b>0</b><span>servers</span></div>
-            <div class="fact"><b>0</b><span>bytes uploaded</span></div>
+        <div class="covergrid">
+          <div class="cover-l">
+            <header class="head">
+              <div class="eyebrow">
+                <span class="kicker">Field guide</span><span class="rule"></span>
+              </div>
+              <h1>Trades&nbsp;card editor</h1>
+              <p class="lead">One HTML file that turns a raw chart screenshot into a clean
+                1920&nbsp;×&nbsp;1080 trade card — session tabs, symbol badge, timeframe pill
+                and wordmark — and exports it at up to 7680&nbsp;×&nbsp;4320.</p>
+            </header>
+
+            <div class="facts">
+              <div class="fact"><b>1</b><span>file</span></div>
+              <div class="fact"><b>0</b><span>dependencies</span></div>
+              <div class="fact"><b>0</b><span>servers</span></div>
+              <div class="fact"><b>0</b><span>bytes uploaded</span></div>
+            </div>
+
+            <p class="navhint">Arrow keys, or the dots below, move through the guide.</p>
           </div>
 
-          <p class="navhint">Arrow keys, or the dots below, move through the guide.</p>
+          <figure class="cardfig">
+            <canvas id="hero" width="1920" height="1080" aria-label="Live preview of a trade card: a candlestick chart with session tabs, symbol badge, timeframe pill and wordmark drawn over it"></canvas>
+            <figcaption>
+              <div class="ctl">
+                <span class="ctl-lab">Symbol</span>
+                <div class="chips" id="heroSym"></div>
+              </div>
+              <div class="ctl">
+                <span class="ctl-lab">Session</span>
+                <div class="chips" id="heroSess"></div>
+              </div>
+              <div class="ctl">
+                <span class="ctl-lab">Logo</span>
+                <div class="chips" id="heroLogo"></div>
+              </div>
+            </figcaption>
+          </figure>
         </div>
 
-        <figure class="cardfig">
-          <canvas id="hero" width="1920" height="1080" aria-label="Live preview of a trade card: a candlestick chart with session tabs, symbol badge, timeframe pill and wordmark drawn over it"></canvas>
-          <figcaption>
-            <div class="ctl">
-              <span class="ctl-lab">Symbol</span>
-              <div class="chips" id="heroSym"></div>
-            </div>
-            <div class="ctl">
-              <span class="ctl-lab">Session</span>
-              <div class="chips" id="heroSess"></div>
-            </div>
-            <div class="ctl">
-              <span class="ctl-lab">Logo</span>
-              <div class="chips" id="heroLogo"></div>
-            </div>
-          </figcaption>
-        </figure>
-      </article>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════ THE RULE ══════════════════════════ -->
-  <section class="slide" data-title="How it works">
-    <div class="inner">
-      <article class="panel">
-        <header class="head">
-          <div class="eyebrow"><span class="tag">Principle</span><span class="rule"></span></div>
-          <h2>The preview canvas <em>is</em> the export canvas</h2>
-          <p class="sub">Every other guarantee in this tool follows from that one decision.</p>
-        </header>
+        <div class="act"><span class="tag">Why</span><span class="kicker">it can promise that</span><span class="rule"></span></div>
 
         <div class="two">
           <div class="col">
+            <h2>The preview canvas <em>is</em> the export canvas</h2>
             <p>Most editors keep a fast preview and a separate render path for the final
               file. The two drift — a label lands a pixel left, a shadow renders heavier,
               and the download never quite matches what you framed.</p>
             <p>Here the on-screen canvas is declared at <code>1920 × 1080</code> and the
               export reads that same composition back. There is no second render path that
               can disagree with the first, so the downloaded PNG is the thing you looked at.</p>
+          </div>
 
+          <div class="col">
             <div class="note">
               <span class="note-lab">Good to know</span>
               <p>The <em>composition</em> is always 1920 × 1080 — a fixed 16:9 frame. Export
@@ -84,96 +82,61 @@
                 how it is laid out. A card framed at 1080p and a card framed at 8K are the
                 same card.</p>
             </div>
-          </div>
 
-          <div class="col">
-            <ol class="pipe">
-              <li><b>Screenshot in</b><span>File picker, drag and drop, or paste. Never leaves the tab.</span></li>
-              <li><b>Working copy</b><span>Capped at 3840&nbsp;px on the long edge so panning stays smooth. The untouched original is kept alongside it.</span></li>
-              <li><b>Frame</b><span>Zoom, offset and per-side trim are stored as numbers, not baked into pixels.</span></li>
-              <li><b>Overlay</b><span>Tabs, badge, pill and wordmark are drawn as vectors and text — never as bitmaps.</span></li>
-              <li><b>PNG out</b><span>Overlays redrawn at the output resolution; image pixels pulled from the original, not the working copy.</span></li>
-            </ol>
-          </div>
-        </div>
-
-        <div class="strip">
-          <span class="strip-lab">Privacy</span>
-          <p>No server component. Nothing is stored, no cookies are set, and no data is sent
-            anywhere. The only network request the page makes is for its two webfonts.</p>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <!-- ══════════════════════════ 01 LOAD ══════════════════════════ -->
-  <section class="slide" data-title="Load">
-    <div class="inner">
-      <article class="panel">
-        <header class="head">
-          <div class="eyebrow"><span class="num">01</span><span class="kicker">Workflow</span><span class="rule"></span></div>
-          <h2>Three ways <em>in</em></h2>
-          <p class="sub">One destination — and nothing leaves the browser on any of them.</p>
-        </header>
-
-        <div class="two">
-          <div class="col">
-            <div class="spec">
-              <div class="row">
-                <span class="lab">Load screenshot</span>
-                <p>Opens the file picker. Accepts anything the browser can decode as an
-                  image — PNG, JPG, WebP, GIF, AVIF.</p>
-              </div>
-              <div class="row">
-                <span class="lab">Drag and drop</span>
-                <p>Drop a file anywhere on the canvas area.</p>
-              </div>
-              <div class="row">
-                <span class="lab">Paste</span>
-                <p>Press <kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>V</kbd> anywhere on the page. The
-                  fastest route: snip a chart, paste, export — no file ever hits your disk.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col">
-            <h3 class="h3">What happens the moment it lands</h3>
-            <p>The original image is retained at full resolution. If its long edge exceeds
-              3840&nbsp;px, a downscaled copy is built and the editor drives off that copy
-              instead — which is why dragging a 6000&nbsp;px screenshot around still feels
-              immediate.</p>
-            <p>Framing state resets: zoom to 100%, offset to centre, all four trims to
-              zero, fit mode to <span class="k">Fit</span>.</p>
-
-            <div class="note">
-              <span class="note-lab">Good to know</span>
-              <p>Using a lighter copy costs you nothing at export. When you export, the
-                image pixels are read back out of the original, so no detail from the source
-                screenshot is thrown away — the working copy exists only to keep the drag smooth.</p>
-            </div>
-
-            <div class="note warn">
-              <span class="note-lab">HEIC will not load</span>
-              <p>Browsers cannot decode Apple's HEIC format. On iPhone, either take a
-                screenshot — those are always PNG — or switch the camera over in
-                <span class="k">Settings</span> → <span class="k">Camera</span> →
-                <span class="k">Formats</span> → <span class="k">Most Compatible</span>.</p>
+            <div class="strip">
+              <span class="strip-lab">Privacy</span>
+              <p>No server component. Nothing is stored, no cookies are set, and no data is
+                sent anywhere. The only network request the page makes is for its two
+                webfonts.</p>
             </div>
           </div>
         </div>
       </article>
     </div>
   </section>
+
 
   <!-- ══════════════════════════ 02 FRAME ══════════════════════════ -->
   <section class="slide" data-title="Frame">
     <div class="inner">
       <article class="panel">
         <header class="head">
-          <div class="eyebrow"><span class="num">02</span><span class="kicker">Workflow</span><span class="rule"></span></div>
-          <h2>Fit, fill, then <em>trim</em></h2>
-          <p class="sub">The part that takes the longest and matters the most.</p>
+          <div class="eyebrow"><span class="num">01</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Get it in, then <em>frame</em> it</h2>
+          <p class="sub">Framing is the part that takes the longest and matters the most.</p>
         </header>
+
+        <div class="spec trio">
+              <div class="row">
+                <span class="lab">Three ways in</span>
+                <p><span class="k">Load screenshot</span> opens the file picker,
+                  you can drop a file anywhere on the canvas, or press
+                  <kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>V</kbd> anywhere on the
+                  page. Anything the browser can decode works — PNG, JPG, WebP, GIF, AVIF.</p>
+              </div>
+              <div class="row">
+                <span class="lab">What lands</span>
+                <p>The original is kept at full resolution. Past 3840&nbsp;px on the long
+                  edge a lighter working copy is built and the editor drives off that, which
+                  is why dragging a 6000&nbsp;px screenshot still feels immediate — and it
+                  costs nothing, because export reads the pixels back out of the original.</p>
+              </div>
+              <div class="row">
+                <span class="lab">And resets</span>
+                <p>Zoom to 100%, offset to centre, all four trims to zero, fit mode to
+                  <span class="k">Fit</span>. Your labels are untouched.</p>
+              </div>
+        </div>
+
+        <div class="note warn">
+          <span class="note-lab">HEIC will not load</span>
+          <p>Browsers cannot decode Apple's HEIC format. On iPhone, either take a
+            screenshot — those are always PNG — or switch the camera over in
+            <span class="k">Settings</span> → <span class="k">Camera</span> →
+            <span class="k">Formats</span> → <span class="k">Most Compatible</span>.</p>
+        </div>
+
+        <div class="act"><span class="tag">Then</span><span class="kicker">Frame it</span><span class="rule"></span></div>
 
         <div class="two">
           <div class="col">
@@ -253,7 +216,7 @@
     <div class="inner">
       <article class="panel">
         <header class="head">
-          <div class="eyebrow"><span class="num">03</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <div class="eyebrow"><span class="num">02</span><span class="kicker">Workflow</span><span class="rule"></span></div>
           <h2>Label it, then <em>sign</em> it</h2>
           <p class="sub">Set once. All of it survives the next screenshot, so a run of cards only pays for this here.</p>
         </header>
@@ -346,7 +309,7 @@
     <div class="inner">
       <article class="panel">
         <header class="head">
-          <div class="eyebrow"><span class="num">04</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <div class="eyebrow"><span class="num">03</span><span class="kicker">Workflow</span><span class="rule"></span></div>
           <h2>Choose the <em>ground</em></h2>
           <p class="sub">Every colour on the card derives from it — including how far off it the glass floats.</p>
         </header>
@@ -421,7 +384,7 @@
     <div class="inner">
       <article class="panel">
         <header class="head">
-          <div class="eyebrow"><span class="num">05</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <div class="eyebrow"><span class="num">04</span><span class="kicker">Workflow</span><span class="rule"></span></div>
           <h2>Nothing is <em>upscaled</em></h2>
           <p class="sub">Lossless PNG. Four sizes. Every one redrawn at its own resolution, never stretched.</p>
         </header>
@@ -578,7 +541,7 @@
   <button class="navbtn" id="next" aria-label="Next slide">
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
   </button>
-  <span class="count"><b id="cur">1</b>&thinsp;/&thinsp;<span id="tot">9</span></span>
+  <span class="count"><b id="cur">1</b>&thinsp;/&thinsp;<span id="tot">7</span></span>
 </nav>
 
 <style>
@@ -975,9 +938,13 @@ kbd{
 .keys td:first-child{width:44%; padding-right:16px; white-space:nowrap; color:var(--ink);}
 
 /* ═══════════════════════ COVER ═══════════════════════ */
-.panel.cover{display:grid; grid-template-columns:1fr; gap:clamp(24px,3vw,44px); align-items:center;}
+/* The opening slide is the identity AND the argument, so the panel stays a flex
+   column (inheriting .panel's gap) and only the masthead half is a grid. It used
+   to be `.panel.cover{display:grid}`, which left no way to put anything beneath
+   the hero card without it becoming a third grid cell. */
+.covergrid{display:grid; grid-template-columns:1fr; gap:clamp(24px,3vw,44px); align-items:center;}
 @media (min-width:920px){
-  .panel.cover{grid-template-columns:1fr 1.12fr;}
+  .covergrid{grid-template-columns:1fr 1.12fr;}
 }
 .cover-l{display:flex; flex-direction:column; gap:clamp(20px,2.4vw,30px); min-width:0;}
 .navhint{
