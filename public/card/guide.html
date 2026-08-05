@@ -726,7 +726,9 @@
         </header>
 
         <ol class="recipe">
-          <li><b>Snip the chart</b><span>Whatever your OS uses. Do not save it — leave it on the clipboard.</span></li>
+          <li><b>Snip the chart</b><span><kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>Shift</kbd> <kbd>S</kbd> on TradingView copies the
+            chart straight to the clipboard. Without it, snip with the OS — <span class="kg"><kbd>Win</kbd> <kbd>Shift</kbd> <kbd>S</kbd></span>,
+            or <span class="kg"><kbd>⌘</kbd> <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>4</kbd></span> on a Mac. Do not save the file; the clipboard is the whole point.</span></li>
           <li><b>Paste</b><span><kbd>Ctrl</kbd>&thinsp;/&thinsp;<kbd>⌘</kbd> <kbd>V</kbd> anywhere on the page.</span></li>
           <li><b>Fill, then trim</b><span>Hit <span class="k">Fill</span>, then trim the edge with the half candle. Two clicks, no drift.</span></li>
           <li><b>Set the labels</b><span>Symbol, session, timeframe — and your logo and handle, once. All of it persists between screenshots.</span></li>
@@ -1026,6 +1028,9 @@ kbd{
   border:1px solid var(--hair); border-bottom-width:2px;
   color:var(--ink); background:var(--glass-2); white-space:nowrap;
 }
+/* Holds a chord together. A key group split across a line break reads as two
+   separate shortcuts, which is exactly the kind of small lie this guide avoids. */
+.kg{white-space:nowrap;}
 
 /* ═══════════════════════ LAYOUT BLOCKS ═══════════════════════ */
 .two{display:grid; grid-template-columns:1fr; gap:clamp(20px,3vw,40px);}
