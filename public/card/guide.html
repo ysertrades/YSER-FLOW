@@ -112,8 +112,8 @@
       <article class="panel">
         <header class="head">
           <div class="eyebrow"><span class="num">01</span><span class="kicker">Workflow</span><span class="rule"></span></div>
-          <h2>Load the screenshot</h2>
-          <p class="sub">Three ways in. All of them land in the same place.</p>
+          <h2>Three ways <em>in</em></h2>
+          <p class="sub">One destination — and nothing leaves the browser on any of them.</p>
         </header>
 
         <div class="two">
@@ -171,7 +171,7 @@
       <article class="panel">
         <header class="head">
           <div class="eyebrow"><span class="num">02</span><span class="kicker">Workflow</span><span class="rule"></span></div>
-          <h2>Frame it</h2>
+          <h2>Fit, fill, then <em>trim</em></h2>
           <p class="sub">The part that takes the longest and matters the most.</p>
         </header>
 
@@ -180,10 +180,10 @@
             <div class="spec">
               <div class="row">
                 <span class="lab">Fit / Fill</span>
-                <p>Where framing starts. <span class="k">Fit</span> shows the whole
-                  screenshot and pads the leftover edges with the card background.
-                  <span class="k">Fill</span> covers the frame edge to edge and lets the
-                  overflow crop away. Either one resets zoom and position.</p>
+                <p>Where framing starts, and <span class="k">Fit</span> to begin with.
+                  Fit shows the whole screenshot and pads the leftover edges with the card
+                  background; <span class="k">Fill</span> covers the frame edge to edge and
+                  lets the overflow crop away. Either one resets zoom and position.</p>
               </div>
               <div class="row">
                 <span class="lab">Zoom</span>
@@ -198,6 +198,16 @@
                   the arrow keys — <kbd>Shift</kbd> makes each press 10&nbsp;px.
                   <span class="k">Centre</span> returns the offset to 0,&nbsp;0 without
                   touching zoom.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Reset</span>
+                <p>Zoom, position, all four trims and fit mode go back to defaults. Your
+                  screenshot and every label survive it.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Remove screenshot</span>
+                <p>Clears the image and its framing, and frees the memory it was holding.
+                  Labels and overlay settings survive that too.</p>
               </div>
             </div>
 
@@ -244,36 +254,23 @@
       <article class="panel">
         <header class="head">
           <div class="eyebrow"><span class="num">03</span><span class="kicker">Workflow</span><span class="rule"></span></div>
-          <h2>Set the labels</h2>
-          <p class="sub">Symbol, session, timeframe. Everything else on the card is furniture.</p>
+          <h2>Label it, then <em>sign</em> it</h2>
+          <p class="sub">Set once. All of it survives the next screenshot, so a run of cards only pays for this here.</p>
         </header>
 
         <div class="two wide-left">
           <div class="col">
             <h3 class="h3">Symbol</h3>
-            <p>Seven instruments, each with a badge drawn from scratch on the canvas — no
-              image files, which is why they stay crisp at 8K. The index futures carry the
-              index size rather than the ticker, because that is what people recognise.</p>
+            <p>Seven instruments. Every badge is drawn on the canvas rather than loaded as
+              an image — which is why they stay sharp at 8K, and why the index futures carry
+              the index size instead of the ticker. Starts on <span class="k">NQ</span>.</p>
 
             <div class="badges" id="badges"></div>
-
-            <div class="spec tight">
-              <div class="row">
-                <span class="lab">Metals</span>
-                <p><span class="k">GC</span> takes the gold mark, <span class="k">SI</span>
-                  the silver one — the same three-bar glyph on a different ground.</p>
-              </div>
-              <div class="row">
-                <span class="lab">Forex</span>
-                <p>Two overlapping flag discs, quote currency behind the base:
-                  <span class="k">EURUSD</span> and <span class="k">GBPUSD</span>.</p>
-              </div>
-            </div>
           </div>
 
           <div class="col">
             <h3 class="h3">Session</h3>
-            <p>Three sessions — London, New York, Asia. Whichever is active is
+            <p>London, New York, Asia. Whichever is active is
               <em>always pinned to the centre</em> of the card; the other two rotate around
               it and fade outward, so the eye lands on the one that matters.</p>
             <figure class="tabfig">
@@ -286,20 +283,58 @@
                 </label>
               </figcaption>
             </figure>
-            <p class="fine">At <span class="k">0</span> the two inactive labels sit flat
-              grey. Raising it dissolves each one toward its outer end, away from the
+            <p class="fine">Drag it. At <span class="k">0</span> the two inactive labels sit
+              flat grey; raising it dissolves each one toward its outer end, away from the
               centre.</p>
 
             <h3 class="h3">Timeframe</h3>
-            <p>Ten presets, or type your own — up to six characters, uppercased as you
-              type. Whatever you set lands in the pill above the rail, and in the exported
-              filename.</p>
+            <p>Ten presets, or type up to six characters — uppercased as you go. It lands in
+              the pill above the rail <em>and</em> in the exported filename.</p>
             <div class="tfs">
               <span class="k">M1</span><span class="k">M3</span><span class="k">M5</span>
               <span class="k">M15</span><span class="k">M30</span><span class="k">H1</span>
               <span class="k on">H4</span><span class="k">H6</span><span class="k">D1</span>
               <span class="k">W1</span>
             </div>
+          </div>
+        </div>
+
+        <div class="act"><span class="tag">Then</span><span class="kicker">Sign it</span><span class="rule"></span></div>
+
+        <div class="two">
+          <div class="col">
+            <div class="spec tight">
+              <div class="row">
+                <span class="lab">Logo</span>
+                <p><span class="k">X</span> or <span class="k">Instagram</span>, both drawn
+                  as vectors at export time, so neither softens at 8K.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Username</span>
+                <p>Up to 20 characters, case preserved — unlike the timeframe field — so a
+                  handle like <span class="k">yser.trades</span> stays lowercase.</p>
+              </div>
+              <div class="row">
+                <span class="lab">Show on card</span>
+                <p>Hides the wordmark. The rail, badge and pill are untouched.</p>
+              </div>
+            </div>
+
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>Clear the username entirely and the logo centres on its own, rather than
+                leaving a dangling slash. A bare mark is often the cleaner signature.</p>
+            </div>
+          </div>
+
+          <div class="col">
+            <figure class="markfig">
+              <canvas id="marks" width="880" height="300" aria-label="The X mark and the Instagram mark side by side over a coloured band, showing that the Instagram outline lets the band show through"></canvas>
+              <figcaption>The X is a solid glyph. The Instagram mark is deliberately not —
+                it is stroked, so the chart carries on through the squircle and the lens.
+                Both render in the card's ink, not brand colour, so the signature stays part
+                of the card instead of competing with it.</figcaption>
+            </figure>
           </div>
         </div>
       </article>
@@ -313,99 +348,65 @@
         <header class="head">
           <div class="eyebrow"><span class="num">04</span><span class="kicker">Workflow</span><span class="rule"></span></div>
           <h2>Choose the <em>ground</em></h2>
-          <p class="sub">Change the background and the whole card follows it.</p>
+          <p class="sub">Every colour on the card derives from it — including how far off it the glass floats.</p>
         </header>
 
-        <p class="wide-p">Six presets, a colour picker and a hex field. The default
-          <span class="k">#F5F5F5</span> is untouched — but pick anything else and every
-          part of the overlay re-derives itself rather than leaving dark type stranded on
-          a dark card.</p>
+        <p class="wide-p">Six presets, a picker and a hex field, starting at
+          <span class="k">#F5F5F5</span>. Pick anything else and every part of the overlay
+          re-derives itself rather than leaving dark type stranded on a dark card.</p>
 
         <div class="grounds" id="grounds"></div>
 
-        <div class="two">
-          <div class="col">
-            <div class="spec tight">
-              <div class="row">
-                <span class="lab">Glass</span>
-                <p>Drawn <em>from</em> the background, so it keeps the same relationship to
-                  it at every colour.</p>
-              </div>
-              <div class="row">
-                <span class="lab">Type</span>
-                <p>Keeps a trace of the background's hue instead of snapping to pure black
-                  or white, and flips to light once the ground is dark. Every preset clears
-                  14:1 contrast.</p>
-              </div>
-              <div class="row">
-                <span class="lab">Session pill &amp; edges</span>
-                <p>The pill inverts to light-on-dark grounds; hairlines and shadows swap
-                  with it, which is what keeps a panel legible once the card goes black.</p>
-              </div>
-            </div>
+        <div class="spec trio">
+          <div class="row">
+            <span class="lab">Glass</span>
+            <p>Drawn <em>from</em> the background, so it keeps the same relationship to it
+              at every colour.</p>
           </div>
-
-          <div class="col">
-            <p>Tone has always moved the panels 10 toward white and up to 32 toward grey.
-              That asymmetry was never arbitrary — 10 is exactly the headroom
-              <span class="k">#F5F5F5</span> has before it clips at white. So the range is
-              now read off whatever ground you pick, and the default still lands on 10 and
-              32.</p>
-            <div class="note">
-              <span class="note-lab">Good to know</span>
-              <p>Pure white is the one ground with no room above it. Rather than let the
-                panels dissolve into the card, the separation is taken from the other side
-                — the glass stays visible at every colour.</p>
-            </div>
+          <div class="row">
+            <span class="lab">Type</span>
+            <p>Keeps a trace of the background's hue instead of snapping to pure black or
+              white, and flips to light once the ground is dark. Every preset clears 14:1.</p>
+          </div>
+          <div class="row">
+            <span class="lab">Session pill &amp; edges</span>
+            <p>The pill inverts on dark grounds; hairlines and shadows swap with it. That is
+              what keeps a panel legible once the card goes black.</p>
           </div>
         </div>
-      </article>
-    </div>
-  </section>
 
-  <!-- ══════════════════════════ 05 TUNE ══════════════════════════ -->
-  <section class="slide" data-title="Tune">
-    <div class="inner">
-      <article class="panel">
-        <header class="head">
-          <div class="eyebrow"><span class="num">05</span><span class="kicker">Workflow</span><span class="rule"></span></div>
-          <h2>Tune the overlay</h2>
-          <p class="sub">Two sliders decide whether the furniture sits on the chart or in it.</p>
-        </header>
+        <div class="act"><span class="tag">Then</span><span class="kicker">How far off it</span><span class="rule"></span></div>
 
         <h3 class="h3">Overlay tone</h3>
-        <p class="wide-p">The glass panels are drawn against a <span class="k">#f5f5f5</span>
-          card background. Tone moves them relative to that background — and it is the
-          control most worth learning, because a bright chart and a dark chart want opposite
-          answers.</p>
+        <p class="wide-p">The control most worth learning, because a bright chart and a dark
+          chart want opposite answers. Tone moves the glass relative to the ground — up
+          toward white, or down into a soft grey. Default <span class="k">+50</span>.</p>
 
         <div class="tones" id="tones"></div>
 
+        <p class="fine">The range is read off whichever ground you picked. Pure white is the
+          only one with no room above it — there the separation comes from below instead, so
+          the glass never dissolves into the card.</p>
+
         <div class="two">
+          <div class="col">
+            <div class="note">
+              <span class="note-lab">Good to know</span>
+              <p>Tone moves fill <em>and</em> opacity together, and each element keeps its
+                own weight — the symbol capsule always reads stronger than the rail behind
+                it, the timeframe pill stronger than both. You cannot knock the three out of
+                balance.</p>
+            </div>
+          </div>
+
           <div class="col">
             <div class="spec tight">
               <div class="row">
                 <span class="lab">Overlay size</span>
-                <p>Scales every piece of furniture together, 80–120%. Tabs, badge, capsule,
-                  pill and wordmark keep their proportions to each other — one number,
-                  no drift.</p>
+                <p>Scales every piece of furniture together, 80–120%, from
+                  <span class="k">100%</span>. Tabs, badge, capsule, pill and wordmark keep
+                  their proportions to each other — one number, no drift.</p>
               </div>
-              <div class="row">
-                <span class="lab">Wordmark</span>
-                <p>The centred logo and handle, on by default. Pick the logo, type your
-                  own username, or switch it off for a clean card — all from the
-                  <span class="k">Wordmark</span> panel. See the next slide.</p>
-              </div>
-            </div>
-          </div>
-          <div class="col">
-            <div class="note">
-              <span class="note-lab">Good to know</span>
-              <p>Tone changes fill <em>and</em> opacity together, and each element carries
-                its own weight — the symbol capsule always reads slightly stronger than the
-                rail behind it, the timeframe pill slightly stronger than both. Move the
-                slider and that relationship survives; you cannot knock the three out of
-                balance.</p>
             </div>
           </div>
         </div>
@@ -413,72 +414,16 @@
     </div>
   </section>
 
-  <!-- ══════════════════════════ 05 SIGN ══════════════════════════ -->
-  <section class="slide" data-title="Sign">
-    <div class="inner">
-      <article class="panel">
-        <header class="head">
-          <div class="eyebrow"><span class="num">06</span><span class="kicker">Workflow</span><span class="rule"></span></div>
-          <h2>Sign the card</h2>
-          <p class="sub">Your logo, your handle — or neither.</p>
-        </header>
 
-        <div class="two">
-          <div class="col">
-            <div class="spec">
-              <div class="row">
-                <span class="lab">Logo</span>
-                <p>Two marks: <span class="k">X</span> and <span class="k">Instagram</span>.
-                  Both are drawn as vectors at export time, so neither softens at 8K.</p>
-              </div>
-              <div class="row">
-                <span class="lab">Username</span>
-                <p>Type anything up to 20 characters. It is <em>not</em> forced to
-                  uppercase — unlike the timeframe field — so lowercase Instagram handles
-                  like <span class="k">yser.trades</span> stay lowercase.</p>
-              </div>
-              <div class="row">
-                <span class="lab">Show on card</span>
-                <p>Hides the whole wordmark. The rail, badge and pill are untouched.</p>
-              </div>
-            </div>
-
-            <div class="note">
-              <span class="note-lab">Good to know</span>
-              <p>Clear the username entirely and the logo centres on its own, rather than
-                leaving a dangling slash. A bare mark is often the cleaner signature.</p>
-            </div>
-
-            <p class="fine">Logo and username persist when you load the next screenshot,
-              so a run of cards only needs this set once.</p>
-          </div>
-
-          <div class="col">
-            <h3 class="h3">Solid X, outlined Instagram</h3>
-            <p>The X mark is a filled glyph. The Instagram mark is deliberately not —
-              it is stroked, so the chart behind it shows through the squircle and the
-              lens instead of being punched out by a solid block.</p>
-            <figure class="markfig">
-              <canvas id="marks" width="880" height="300" aria-label="The X mark and the Instagram mark side by side over a coloured band, showing that the Instagram outline lets the band show through"></canvas>
-              <figcaption>The X is a solid glyph; the Instagram mark is stroked, so on the
-                card the chart carries on through the squircle and the lens.</figcaption>
-            </figure>
-            <p class="fine">Both are rendered in the card's ink, not brand colour, so the
-              signature stays part of the card rather than competing with it.</p>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
 
   <!-- ══════════════════════════ 06 EXPORT ══════════════════════════ -->
   <section class="slide" data-title="Export">
     <div class="inner">
       <article class="panel">
         <header class="head">
-          <div class="eyebrow"><span class="num">07</span><span class="kicker">Workflow</span><span class="rule"></span></div>
-          <h2>Export</h2>
-          <p class="sub">Lossless PNG. Four sizes. Three ways to get the file out.</p>
+          <div class="eyebrow"><span class="num">05</span><span class="kicker">Workflow</span><span class="rule"></span></div>
+          <h2>Nothing is <em>upscaled</em></h2>
+          <p class="sub">Lossless PNG. Four sizes. Every one redrawn at its own resolution, never stretched.</p>
         </header>
 
         <div class="sizes">
@@ -490,10 +435,10 @@
 
         <div class="two">
           <div class="col">
-            <h3 class="h3">Why the big sizes are actually bigger</h3>
-            <p>Nothing is upscaled. Every label, badge and panel is drawn again at the
-              output size rather than stretched from the preview, and the image pixels
-              come from your original screenshot, not the editing copy.</p>
+            <h3 class="h3">What actually happens at 8K</h3>
+            <p>Every label, badge and panel is drawn again at the output size rather than
+              stretched from the preview, and the image pixels come from your original
+              screenshot, not the editing copy.</p>
             <p>Each size is also rendered larger than it is saved and resolved down, which
               smooths the curve of a badge and the edge of the type — a full double pass
               at 1080p and 4K, a partial one at 6K.</p>
@@ -530,139 +475,7 @@
     </div>
   </section>
 
-  <!-- ══════════════════════════ CONTROL REFERENCE ══════════════════════════ -->
-  <section class="slide" data-title="Controls">
-    <div class="inner">
-      <article class="panel">
-        <header class="head">
-          <div class="eyebrow"><span class="tag">Reference</span><span class="kicker">What goes on the card</span><span class="rule"></span></div>
-          <h2>Control reference — the card</h2>
-          <p class="sub">Everything that becomes part of the composition.</p>
-        </header>
 
-        <div class="spec cols2">
-          <div class="row">
-            <span class="lab">Symbol</span>
-            <p>Futures <span class="k">NQ</span> <span class="k">ES</span>
-              <span class="k">YM</span> <span class="k">GC</span> <span class="k">SI</span>,
-              forex <span class="k">EURUSD</span> <span class="k">GBPUSD</span>.
-              Default <span class="k">NQ</span>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Session</span>
-            <p><span class="k">London</span> <span class="k">New York</span>
-              <span class="k">Asia</span>. The active one is centred and the other two
-              rotate around it. Default <span class="k">New York</span>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Fade</span>
-            <p>0–100. How far the two inactive session labels dissolve toward their outer
-              ends. <span class="k">0</span> leaves them flat grey. Default
-              <span class="k">100</span>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Timeframe</span>
-            <p><span class="k">M1</span> <span class="k">M3</span> <span class="k">M5</span>
-              <span class="k">M15</span> <span class="k">M30</span> <span class="k">H1</span>
-              <span class="k">H4</span> <span class="k">H6</span> <span class="k">D1</span>
-              <span class="k">W1</span>, or a custom label up to 6 characters, forced
-              uppercase. Default <span class="k">H4</span>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Background</span>
-            <p>Six presets, a colour picker, or a typed hex. Every overlay colour derives
-              from it. Default <span class="k">#F5F5F5</span>;
-              <span class="k">Reset</span> returns to it.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Overlay size</span>
-            <p>80–120%. Scales all furniture together. Default <span class="k">100%</span>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Overlay tone</span>
-            <p>−100 to +100. <span class="k">flat</span> at zero melts the panels into the
-              background; positive lifts them toward white; negative sinks them into a soft
-              grey. Default <span class="k">+50</span>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Wordmark — logo</span>
-            <p><span class="k">X</span> filled, or <span class="k">Instagram</span> as an
-              outline the chart shows through. Default <span class="k">X</span>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Wordmark — username</span>
-            <p>Free text up to 20 characters, case preserved. Empty centres the logo on
-              its own. Default <span class="k">YSERTRADES</span>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Show on card</span>
-            <p>Hides the centred logo and handle without touching the rail, badge or
-              pill. On by default.</p>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <!-- ══════════════════ CONTROL REFERENCE — FRAME ══════════════════ -->
-  <section class="slide" data-title="Controls · frame">
-    <div class="inner">
-      <article class="panel">
-        <header class="head">
-          <div class="eyebrow"><span class="tag">Reference</span><span class="kicker">Framing &amp; output</span><span class="rule"></span></div>
-          <h2>Control reference — the frame</h2>
-          <p class="sub">Everything that decides which pixels land inside the composition.</p>
-        </header>
-
-        <div class="spec cols2">
-          <div class="row">
-            <span class="lab">Zoom</span>
-            <p>Slider 20–400%. Scroll and pinch reach 600%. Steps of ±0.1% and ±0.5%;
-              scroll steps 2%, or 0.2% with <kbd>Shift</kbd>. Zooming by gesture keeps the
-              point under your cursor fixed.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Fit / Fill</span>
-            <p><span class="k">Fit</span> contains the whole screenshot,
-              <span class="k">Fill</span> covers the frame. Both reset zoom to 100% and
-              position to centre. Default <span class="k">Fit</span>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Position</span>
-            <p>Offset in card pixels from centre. Drag the canvas, press the arrow keys, or
-              use the <span class="k">←</span> <span class="k">→</span> <span class="k">↑</span>
-              <span class="k">↓</span> buttons for 1&nbsp;px and
-              <span class="k">←10</span> <span class="k">10→</span> for 10.
-              <span class="k">Centre</span> zeroes it without changing zoom.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Trim edges</span>
-            <p>Per-side crop measured in source pixels, applied before framing.
-              <span class="k">−</span> and <span class="k">+</span> step 1&nbsp;px,
-              <span class="k">+10</span> steps ten, or type a number —
-              <kbd>↑</kbd> <kbd>↓</kbd> inside that box also step it by 1. Opposite sides
-              are prevented from meeting — 20&nbsp;px of image always remains.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Export quality</span>
-            <p><span class="k">1080p</span> <span class="k">4K</span>
-              <span class="k">6K</span> <span class="k">8K</span>, all lossless PNG.
-              Default <span class="k">4K</span>.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Reset</span>
-            <p>Returns zoom, position, all four trims and fit mode to defaults. Keeps your
-              screenshot and your labels.</p>
-          </div>
-          <div class="row">
-            <span class="lab">Remove screenshot</span>
-            <p>Clears the image and all framing, and frees the memory it was holding.
-              Labels and overlay settings survive.</p>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
 
   <!-- ══════════════════════════ KEYS ══════════════════════════ -->
   <section class="slide" data-title="Keys">
@@ -670,8 +483,8 @@
       <article class="panel">
         <header class="head">
           <div class="eyebrow"><span class="tag">Reference</span><span class="kicker">Input</span><span class="rule"></span></div>
-          <h2>Keys &amp; gestures</h2>
-          <p class="sub">Everything you can do without reaching for the panel.</p>
+          <h2>Without touching the <em>panel</em></h2>
+          <p class="sub">Every key, every gesture — and the one exception that trims instead of moves.</p>
         </header>
 
         <div class="two">
@@ -765,7 +578,7 @@
   <button class="navbtn" id="next" aria-label="Next slide">
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
   </button>
-  <span class="count"><b id="cur">1</b>&thinsp;/&thinsp;<span id="tot">13</span></span>
+  <span class="count"><b id="cur">1</b>&thinsp;/&thinsp;<span id="tot">9</span></span>
 </nav>
 
 <style>
@@ -944,6 +757,15 @@ body{
 /* ═══════════════════════ TYPE ═══════════════════════ */
 .head{display:flex; flex-direction:column; gap:9px;}
 .eyebrow{display:flex; align-items:center; gap:13px;}
+
+/* Two slides carry two acts each — label then sign, ground then tone. This is
+   the eyebrow again, set mid-panel above a hairline, so the second half
+   announces itself in the deck's existing voice instead of arriving as a wall.
+   No new tokens: it borrows .tag, .kicker and .rule unchanged. */
+.act{
+  display:flex; align-items:center; gap:13px;
+  padding-top:clamp(6px,1.2vw,14px); border-top:1px solid var(--hair-2);
+}
 .num{
   font-family:var(--mono); font-size:12px; font-weight:600;
   letter-spacing:.22em; color:var(--signal);
@@ -1059,6 +881,16 @@ kbd{
   .spec.cols2 .row{break-inside:avoid; border-top:1px solid var(--hair-2); padding:10px 0;}
 }
 .spec.cols2 p{font-size:14px;}
+
+/* Three peers, three columns — not CSS multi-column, which balances by height
+   and leaves one column half-empty when the middle item runs long. A grid keeps
+   the band under the four ground cards as even as the cards themselves. Every
+   row carries the hairline here, including the first, or the three would not
+   line up. */
+@media (min-width:860px){
+  .spec.trio{grid-template-columns:repeat(3,1fr); column-gap:34px;}
+  .spec.trio .row{border-top:1px solid var(--hair-2); padding:13px 0 0;}
+}
 .tfs{display:flex; flex-wrap:wrap; gap:5px;}
 .tfs .on{background:var(--tab-bg); border-color:var(--tab-bg); color:var(--tab-fg);}
 
