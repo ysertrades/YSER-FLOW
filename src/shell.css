@@ -241,36 +241,62 @@
 
 .sess-dial-wrap { position: relative; width: 300px; height: 300px; margin-bottom: 22px; }
 .sess-dial { width: 300px; height: 300px; display: block; }
+/* The readout has to live inside the INNER ring, not merely inside the dial —
+   its box is inset:0 over the whole 300px square, so nothing about the layout
+   stops it running under the arcs. The inner ring is r=85 with a 7px stroke, so
+   the band starts at 81.5, and a line sitting dy from the centre may only be
+   2 * sqrt(81.5^2 - dy^2) wide. The padding holds the wrapping lines inside
+   that; the clock is nowrap and is sized to fit instead.
+
+   Height is the other half of it, and the less obvious one. The clock is the
+   widest line, so it is the line least able to afford being pushed away from
+   the centre — and every extra line in the stack does exactly that. The stack
+   is four lines deep whenever a sub-window is running, which is what set these
+   numbers: 42px put 27 pixels of the clock on the track in the three-line case
+   alone, and 39px still failed the four-line one. 36px with the rhythm below
+   clears every state, measured on rendered pixels rather than on boxes. */
 .sess-centre {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 3px;
+  align-items: center; justify-content: center; gap: 2px;
+  padding: 0 72px;                      /* a backstop; every line is nowrap */
+  box-sizing: border-box;
   pointer-events: none;                 /* the dial underneath stays selectable */
 }
 .sess-clock {
-  font-size: 42px; font-weight: 700; letter-spacing: -0.03em; line-height: 1;
+  font-size: 36px; font-weight: 700; letter-spacing: -0.03em; line-height: 1;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;                  /* "11:25 PM" must never wrap to two lines */
 }
-.sess-clock.sess-shut { font-size: 30px; color: rgba(255, 255, 255, 0.55); letter-spacing: 0; }
-.sess-clock small { font-size: 15px; font-weight: 600; opacity: 0.5; margin-left: 4px; }
+.sess-clock.sess-shut { font-size: 29px; color: rgba(255, 255, 255, 0.55); letter-spacing: 0; }
+.sess-clock small { font-size: 14px; font-weight: 600; opacity: 0.5; margin-left: 4px; }
+/* Every line in the readout is nowrap. Not for looks: a line that wraps gets
+   both wider (it fills the padding box) and taller (it pushes the lines above
+   and below further from the centre, where the ring closes in), so wrapping is
+   the one failure that compounds. The silver-bullet line used to wrap and drop
+   an orphaned "00S" straight onto the arcs. Nowrap makes any future overflow
+   show up as ink outside the ring, which the pixel test catches. */
 .sess-state {
-  margin-top: 8px;
+  margin-top: 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10.5px; font-weight: 800;
   letter-spacing: 0.16em; text-transform: uppercase;
+  white-space: nowrap;
 }
 .sess-state.sess-none { color: rgba(255, 255, 255, 0.42); }
 .sess-sublabel {
-  margin-top: 5px;
+  margin-top: 3px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10px; font-weight: 700;
   letter-spacing: 0.12em; text-transform: uppercase;
   color: #0a84ff;
+  white-space: nowrap;
 }
 .sess-left {
-  font-size: 13px; font-weight: 600;
+  font-size: 12.5px; font-weight: 600;
   color: rgba(255, 255, 255, 0.55);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .sess-block { width: 100%; padding: 14px 16px 6px; margin-bottom: 12px; }
@@ -288,7 +314,15 @@
   font-size: 13.5px;
 }
 .sess-block .sess-row:first-of-type { border-top: 0; }
-.sess-nm { flex: 1; font-weight: 600; color: rgba(255, 255, 255, 0.9); }
+/* One line, always. A wrapped name ("London / Killzone") makes its row taller
+   than its neighbours and the column of times stops lining up, which is most of
+   what the list is for. Ellipsis rather than shrink-to-fit so the times keep
+   their column; the media query below is what stops it ever being needed. */
+.sess-nm {
+  flex: 1; min-width: 0;
+  font-weight: 600; color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .sess-at {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px; color: rgba(255, 255, 255, 0.34);
@@ -325,4 +359,22 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.14);
   border-bottom-left-radius: 3px;
   transform: translateY(-4px);
+}
+
+/* Small phones. The row is bullet + name + time + state, and only the name is
+   flexible, so on a 320px screen it was the one thing that got squeezed —
+   "London Killzone" ran out of room and ellipsised. Everything else here gives
+   the name back the width it needs; nothing changes above this breakpoint.
+
+   The dial is deliberately NOT scaled. Its readout is HTML positioned over an
+   SVG, so shrinking the ring without shrinking the type would walk the text
+   straight back onto the arcs — the exact collision the sizes above were set to
+   avoid. 300px still clears a 320px viewport. */
+@media (max-width: 380px) {
+  .sess-wrap { padding-left: 12px; padding-right: 12px; }
+  .sess-block { padding-left: 12px; padding-right: 12px; }
+  .sess-row { gap: 8px; font-size: 13px; }
+  .sess-at { font-size: 10.5px; }
+  .sess-st { min-width: 56px; }
+  .sess-sub { padding-left: 10px; }
 }

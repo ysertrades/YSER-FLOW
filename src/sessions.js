@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 
 /* ---------------------------------------------------------------------------
  * The ET clock and the session windows.
  *
- * This used to live inside Calculator.jsx. Two surfaces need it now — the
- * calculator's four session blocks and the Sessions dial — so it lives here and
- * both import it. Nothing about the behaviour changed in the move.
+ * This used to live inside Calculator.jsx, driving four small blocks above the
+ * inputs. Those are gone — the calculator is a calculator — and the Sessions
+ * dial is the only reader now.
  * ------------------------------------------------------------------------- */
 
 const ET_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -78,34 +78,31 @@ export function weekendStatus(linearNow) {
   return { status: "closed", remaining };
 }
 
-export function fmtRemaining(mins) {
-  const h = Math.floor(mins / 60);
-  const m = Math.round(mins % 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-export function fmtClock(hours, minutes) {
-  return `ET ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+/* Seconds appear only once they are the thing you are watching. Above an hour
+   they are noise; under a minute they are the whole message. */
+export function fmtCountdown(totalSeconds) {
+  const s = Math.max(0, Math.round(totalSeconds));
+  if (s >= 86400) return `${Math.round(s / 86400)}d`;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${String(sec).padStart(2, "0")}s`;
+  return `${sec}s`;
 }
 
 /* ---------------------------------------------------------------------------
  * The windows.
  *
- * SESSIONS is the outer ring and the calculator's four blocks — the same array
- * that has always driven them. SUB holds a window that sits INSIDE one of those
- * rather than beside it: the silver bullet is an hour within the NY killzone,
+ * RING_SESSIONS is the outer ring. SUB_WINDOWS holds a window that sits INSIDE
+ * one of those rather than beside it: the silver bullet is an hour within the
+ * NY killzone,
  * so it cannot share the ring without one hiding the other, and it is drawn on
  * its own inner ring and nested under its parent in the list.
  *
  * Changing which windows you trade is an edit to these two arrays and nothing
- * else. `parent` must match a SESSIONS `name` exactly.
+ * else. `parent` must match a RING_SESSIONS `name` exactly.
  * ------------------------------------------------------------------------- */
-export const DAILY_SESSIONS = [
-  { key: "asia", name: "Asia Range", start: 1200, end: 1440, range: "8 PM–12 AM" },
-  { key: "london", name: "London Killzone", start: 120, end: 300, range: "2 AM–5 AM" },
-  { key: "ny", name: "NY Killzone", start: 570, end: 660, range: "9:30 AM–11 AM" },
-];
-
 export const RING_SESSIONS = [
   { key: "asia",   name: "Asia Range",      start: 1200, end: 1440, at: "8:00 PM" },
   { key: "london", name: "London Killzone", start: 120,  end: 300,  at: "2:00 AM" },
@@ -127,13 +124,18 @@ export const MARKS = [
 /* ---------------------------------------------------------------------------
  * The tick.
  *
- * One shared hook so the calculator and the dial cannot drift a second apart.
- * It re-renders on the second boundary rather than every 1000ms from mount, so
- * the displayed minute turns over when the clock does.
+ * Re-renders on the second boundary rather than every 1000ms from mount, so the
+ * displayed second turns over when the clock does instead of drifting.
+ *
+ * `enabled` matters. The dial is mounted for the life of the app so its state
+ * survives tab switches, which means without this it would re-render — and
+ * re-lay-out an SVG — once a second while you are reading the guide or dragging
+ * a screenshot around in the editor. Nothing is watching it there, so it stops.
  * ------------------------------------------------------------------------- */
-export function useEtTick() {
+export function useEtTick(enabled = true) {
   const [, setTick] = useState(0);
   useEffect(() => {
+    if (!enabled) return undefined;
     let timeoutId;
     const scheduleNextTick = () => {
       const msIntoSecond = Date.now() % 1000;
@@ -145,23 +147,7 @@ export function useEtTick() {
     };
     scheduleNextTick();
     return () => clearTimeout(timeoutId);
-  }, []);
-}
-
-export function useClockAndSessions() {
-  useEtTick();
-
-  const { hours, minutes, day, totalMinutes } = getEtNow();
-  const linearNow = toLinear(day, totalMinutes);
-
-  return useMemo(() => {
-    const sessions = [
-      ...DAILY_SESSIONS.map((s) => ({ ...s, ...dailyStatusWeekAware(linearNow, s.start, s.end) })),
-      { key: "weekend", name: "Weekend", range: "Fri 5 PM–Sun 6 PM", ...weekendStatus(linearNow) },
-    ];
-    return { clockLabel: fmtClock(hours, minutes), sessions };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hours, minutes, linearNow]);
+  }, [enabled]);
 }
 
 /* ---------------------------------------------------------------------------
@@ -172,21 +158,28 @@ export function useClockAndSessions() {
  * each working it out.
  * ------------------------------------------------------------------------- */
 export function readDay(at = new Date()) {
-  const { hours, minutes, day, totalMinutes } = getEtNow(at);
+  const { hours, minutes, seconds, day, totalMinutes } = getEtNow(at);
   const linearNow = toLinear(day, totalMinutes);
   const closed = weekendStatus(linearNow).status === "open"; // "weekend open" = market shut
 
+  /* Everything below is in SECONDS from ET midnight, not minutes. A countdown
+     that only knows the minute sits on the same number for sixty seconds and
+     then jumps two — it reads as broken rather than as low resolution. The
+     window bounds are still authored in minutes because that is how anyone
+     thinks about them; they are converted here, once. */
+  const nowSec = hours * 3600 + minutes * 60 + seconds;
+
   const state = (w) => {
     if (closed) return "done";
-    if (totalMinutes >= w.start && totalMinutes < w.end) return "open";
-    return totalMinutes < w.start ? "ahead" : "done";
+    if (nowSec >= w.start * 60 && nowSec < w.end * 60) return "open";
+    return nowSec < w.start * 60 ? "ahead" : "done";
   };
 
   const decorate = (w) => ({
     ...w,
     state: state(w),
-    remaining: w.end - totalMinutes,
-    until: w.start - totalMinutes,
+    remaining: w.end * 60 - nowSec,   // seconds
+    until: w.start * 60 - nowSec,     // seconds
   });
 
   const ring = RING_SESSIONS.map(decorate);
@@ -200,12 +193,15 @@ export function readDay(at = new Date()) {
   const openSub = sub.find((w) => w.state === "open") || null;
 
   return {
-    hours, minutes, day, totalMinutes, linearNow, closed,
+    hours, minutes, seconds, day, totalMinutes, nowSec, linearNow, closed,
+    /* where the day has got to, 0..1 — the dot rides this, so it creeps rather
+       than stepping once a minute */
+    dayFraction: nowSec / 86400,
     ring, sub, upcoming,
     nextKey: upcoming.length ? upcoming[0].key : null,
     openRing, openSub,
     // the headline window: the session if one is running, otherwise the sub
     primary: openRing || openSub,
-    reopenIn: closed ? weekendStatus(linearNow).remaining : 0,
+    reopenIn: closed ? weekendStatus(linearNow).remaining * 60 : 0,  // seconds
   };
 }

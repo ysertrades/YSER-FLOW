@@ -1,8 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-/* The ET clock and the session windows live in sessions.js now — the Sessions
-   dial needs the same engine, and two copies of a week-aware clock is two
-   places for it to be subtly wrong. */
-import { useClockAndSessions, fmtRemaining } from "./sessions";
+
 
 // ---------------------------------------------------------------------------
 // Contract specs (hardcoded)
@@ -119,38 +116,6 @@ function calculateContracts(riskAmount, stopTicks) {
 }
 
 // ---------------------------------------------------------------------------
-// Session block
-// ---------------------------------------------------------------------------
-function SessionBlock({ session, index }) {
-  const isOpen = session.status === "open";
-  return (
-    // Open/closed is a class, not an inline style. Inline styles cannot be
-    // reached by a media query, and the glow needed to be quieter on a desktop
-    // than on a phone. The transition lives with it in CSS.
-    <div
-      className={`glass session-block ${isOpen ? "session-open" : "session-closed"}`}
-      style={{ animationDelay: `${index * 70}ms` }}
-    >
-      <span className={`pill session-pill ${isOpen ? "pill-open" : "pill-closed"}`}>
-        {isOpen ? "OPEN" : "CLOSED"}
-      </span>
-      <div>
-        <div className="session-name-row mb-2">
-          <span className="text-[13px] font-semibold text-white/90">{session.name}</span>
-        </div>
-        <div className="text-[12px] mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>
-          {session.range}
-        </div>
-      </div>
-      <div className="text-[12.5px] font-medium" style={{ color: "rgba(255,255,255,0.75)", whiteSpace: "nowrap" }}>
-        {isOpen ? "Closes in " : "Opens in "}
-        {fmtRemaining(session.remaining)}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Symbol dropdown
 // ---------------------------------------------------------------------------
 function SymbolDropdown({ selected, onSelect }) {
@@ -234,11 +199,13 @@ export default function Calculator({ hidden = false }) {
   const [riskAmount, setRiskAmount] = useState("");
   const [stopLoss, setStopLoss] = useState("");
   const [selectedPair, setSelectedPair] = useState("NQ");
-  const { clockLabel, sessions } = useClockAndSessions();
 
   const riskNum = parseFloat(riskAmount) || 0;
   const stopNum = parseFloat(stopLoss) || 0;
   const spec = SPECS[selectedPair];
+  /* Rounded because tickSize is a float: SI is 0.005, and 1/0.005 lands on
+     199.99999999999997 without it. */
+  const ticksPerPoint = Math.round(1 / spec.tickSize);
 
   // Recalculates for every pair only when risk or stop actually change.
   const allResults = useMemo(() => calculateContracts(riskNum, stopNum), [riskNum, stopNum]);
@@ -321,7 +288,6 @@ export default function Calculator({ hidden = false }) {
           text-size-adjust: 100%;
         }
         @media (prefers-reduced-motion: reduce) {
-          .session-block { animation: none; opacity: 1; transform: none; }
           .dropdown-menu { animation: none; }
           .results-fade-in, .results-fade-out { animation-duration: 0.01ms; }
           .input-field:focus { transform: none; }
@@ -339,88 +305,19 @@ export default function Calculator({ hidden = false }) {
           border: 0.4px solid rgba(176,176,176,0.1);
           border-radius: 20px;
         }
-        .clock-pill {
-          padding: 9px 22px;
-          margin-bottom: 20px;
-          font-size: 13px;
-          font-weight: 600;
-          letter-spacing: 0.04em;
-          color: rgba(255,255,255,0.8);
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
-        }
-
-        .session-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 14px;
+        /* the eyebrow, matched to the Sessions header so the tabs open alike */
+        .calc-head {
           width: 100%;
           max-width: 560px;
-          margin-bottom: 22px;
-          position: relative;
-          z-index: 1;
+          display: flex; align-items: center; gap: 12px;
+          margin-bottom: 20px;
+          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-size: 10.5px; font-weight: 700;
+          letter-spacing: 0.2em; text-transform: uppercase;
+          color: rgba(255,255,255,0.34);
         }
-        .session-block {
-          padding: 15px 16px;
-          opacity: 0;
-          transform: translateY(10px);
-          animation: fadeUp 0.45s ease forwards;
-          transition: box-shadow 0.9s cubic-bezier(.33,0,.2,1),
-                      border-color 0.9s cubic-bezier(.33,0,.2,1);
-          outline: none;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          position: relative;
-        }
-        .session-block:hover, .session-block:focus, .session-block:active { outline: none; }
-        @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
-
-        /* A session opening or closing should be a light coming up or going
-           down, not a switch flipping. The glow used to jump because the two
-           states had a different NUMBER of shadow layers — one closed, two open
-           — and box-shadow cannot interpolate between lists of unequal length,
-           so it snapped no matter what transition was set.
-
-           Both states carry two layers now. Closed just holds the glow at zero
-           alpha and zero radius, which is a value the open state can travel to
-           and from, so the same 0.9s ease covers the whole fade in both
-           directions. Nothing else about the block changes. */
-        .session-open {
-          border-color: rgba(74,222,128,0.55);
-          box-shadow: 0 0 24px rgba(74,222,128,0.24),
-                      inset 0 1px 0 rgba(255,255,255,0.08);
-        }
-        .session-closed {
-          border-color: rgba(255,255,255,0.08);
-          box-shadow: 0 0 0 rgba(74,222,128,0),
-                      inset 0 1px 0 rgba(255,255,255,0.06);
-        }
-
-        /* Same green, less of it, once there is a pointer. A 0.4px border lands
-           on a fraction of a device pixel: a phone at 3x renders it as a faint
-           hairline, a desktop at 1x rounds it up to a solid line, so identical
-           values read roughly twice as loud on a computer. These are the values
-           that MATCH the phone rather than exceed it. */
-        @media (hover: hover) and (pointer: fine) {
-          .session-open {
-            border-color: rgba(74,222,128,0.34);
-            box-shadow: 0 0 18px rgba(74,222,128,0.15),
-                        inset 0 1px 0 rgba(255,255,255,0.08);
-          }
-        }
-
-        .session-pill { position: absolute; top: 15px; right: 16px; }
-        .session-name-row { padding-right: 80px; }
-
-        /* the status chip fades with the glow rather than cutting */
-        .pill {
-          font-size: 10px; font-weight: 800; letter-spacing: 0.04em;
-          padding: 3px 9px; border-radius: 999px;
-          transition: background 0.9s cubic-bezier(.33,0,.2,1),
-                      color 0.9s cubic-bezier(.33,0,.2,1);
-        }
-        .pill-open { background: rgba(74,222,128,0.18); color: #4ADE80; }
-        .pill-closed { background: rgba(255,69,58,0.14); color: #ff6961; }
+        .calc-head b { color: rgba(255,255,255,0.82); font-weight: 700; }
+        .calc-head i { flex: 1; height: 1px; background: rgba(255,255,255,0.09); }
 
         .main-panel {
           width: 100%;
@@ -611,16 +508,46 @@ export default function Calculator({ hidden = false }) {
         .reset-btn:hover { background: rgba(255,255,255,0.09); }
         .reset-btn:active { transform: scale(0.97); }
 
+        .spec-card { padding: 16px 20px 18px; }
+        .spec-grid {
+          display: grid; grid-template-columns: 1fr 1fr;
+          gap: 1px;                                   /* the hairlines ARE the gap */
+          background: rgba(176,176,176,0.1);
+          border-radius: 12px; overflow: hidden;
+          margin-top: 12px;
+        }
+        .spec-cell {
+          background: #141414;                        /* over the grid's hairline */
+          padding: 11px 13px;
+          display: flex; flex-direction: column; gap: 3px;
+        }
+        .spec-k {
+          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-size: 9.5px; font-weight: 700;
+          letter-spacing: 0.14em; text-transform: uppercase;
+          color: rgba(255,255,255,0.32);
+        }
+        .spec-v {
+          font-size: 15px; font-weight: 700; color: #f5f5f7;
+          font-variant-numeric: tabular-nums;
+          display: flex; align-items: baseline; gap: 7px;
+        }
+        .spec-v i {
+          font-style: normal; font-size: 11.5px; font-weight: 600;
+          color: rgba(255,255,255,0.34);
+        }
+
         .empty-note { text-align: center; font-size: 12px; color: rgba(255,255,255,0.3); padding: 4px 0 12px; }
       `}</style>
 
       <div className="wrap" style={hidden ? { display: "none" } : undefined}>
-      <div className="glass clock-pill">{clockLabel}</div>
-
-      <div className="session-grid">
-        {sessions.map((s, i) => (
-          <SessionBlock key={s.key} session={s} index={i} />
-        ))}
+      {/* The four session blocks used to sit here. They are the Sessions tab
+          now, and this is a calculator. The eyebrow replaces them: it names the
+          surface the way the dial's header does, so the two tabs open the same
+          way instead of one starting with furniture and the other with a title. */}
+      <div className="calc-head">
+        <b>Position</b><span>·</span><span>sizing</span>
+        <i aria-hidden="true" /><span>Futures</span>
       </div>
 
       <div className="glass main-panel">
@@ -697,6 +624,38 @@ export default function Calculator({ hidden = false }) {
         )}
 
         <button className="reset-btn" onClick={reset}>Reset Inputs</button>
+      </div>
+
+      {/* The stop is entered in TICKS, but every chart quotes points — so the
+          one conversion this calculator silently asks you to do in your head is
+          the one it now does for you, per instrument, as you switch symbol.
+          Reference rather than decoration: it is why the space below the
+          results is not empty. */}
+      <div className="glass main-panel spec-card">
+        <div className="panel-label">{selectedPair} · {spec.label}</div>
+        <div className="spec-grid">
+          <div className="spec-cell">
+            <span className="spec-k">Tick size</span>
+            <span className="spec-v">{spec.tickSize} pts</span>
+          </div>
+          <div className="spec-cell">
+            <span className="spec-k">Tick value</span>
+            <span className="spec-v">{fmtMoney(spec.tickValue)}</span>
+          </div>
+          <div className="spec-cell">
+            <span className="spec-k">1 point</span>
+            <span className="spec-v">
+              {ticksPerPoint} ticks
+              <i>{fmtMoney(spec.tickValue * ticksPerPoint)}</i>
+            </span>
+          </div>
+          <div className="spec-cell">
+            <span className="spec-k">{spec.microName}</span>
+            <span className="spec-v">
+              {fmtMoney(spec.microTickValue)}<i>per tick</i>
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Authorship, at the end of the scroll. Not in the header: the launch
