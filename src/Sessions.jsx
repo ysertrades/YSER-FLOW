@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Particles from "./Particles";
 import { useEtTick, readDay, fmtCountdown, MARKS } from "./sessions";
 
 /* ---------------------------------------------------------------------------
@@ -160,6 +161,9 @@ export default function Sessions({ active, ready = true, now }) {
 
   return (
     <div className={`pane ${paneState}`} aria-hidden={!active}>
+      {/* Behind everything, and outside .sess-scroll so it stays put while the
+          list scrolls over it. */}
+      <Particles active={shown} />
       <div className="sess-scroll">
         <div className="sess-wrap">
           <div className="sess-head">
