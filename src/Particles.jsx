@@ -46,18 +46,6 @@ const SPRITE = 64;          // sprite is drawn at 64px and scaled down, never up
    — at 7 the tails were wide enough to be blobs behind the Today card. */
 const HALO = 4.2;
 
-/* Held back until the dial's entrance is COMPLETELY over — including the
-   marker's sweep, which is the last thing to finish and the most fragile.
- *
- * 950 was not enough. Measured on a cold launch at 6x CPU throttle, the canvas
- * loop starting inside the sweep's tail was the most consistent contributor to
- * it stalling: switching the field off was the only case that reliably dropped
- * the stall from ~88ms to ~56ms. Clearing a full-screen canvas and stamping 34
- * sprites is real main-thread work, and the sweep has no main thread to spare.
- *
- * Nothing is visibly missing while it waits: 34 dots drifting at a fraction of
- * a pixel per frame look identical stopped. */
-const START_DELAY = 1500;
 
 /* The original's hash. Keeping it means the field is identical on every open
    rather than reshuffling, which matters here — this sits under a dial you are
@@ -123,6 +111,7 @@ export default function Particles({ active }) {
           vy: Math.sin(angle) * speed,
           size,
           alpha: 0.07 + depth * 0.13,
+          dx: 0, dy: 0,          // last drawn position, for the dirty rect
         };
       });
     };
@@ -148,8 +137,30 @@ export default function Particles({ active }) {
       return Number.isFinite(o) ? o : 1;
     };
 
+    /* Clear only where something was drawn, not the whole surface.
+ 
+       The field drifts the whole time the tab is up now, including through the
+       entrance — a background that stops the moment you look away and only
+       starts again a second and a half later is the thing that reads as frozen.
+       So what a frame costs is what decides whether it can, and a full-surface
+       clear is the expensive half of it: ~1.6 million pixels at DPR 2 on a
+       phone, against a few thousand for thirty-four small rects. Same drawing,
+       a fraction of the fill.
+ 
+       Every clear happens before any draw. Doing them per particle in one pass
+       would erase the neighbour that had already been drawn where two overlap. */
+    let painted = false;
+    const wipe = () => { ctx.clearRect(0, 0, w, h); painted = false; };
+
     const draw = (move, fade) => {
-      ctx.clearRect(0, 0, w, h);
+      if (painted) {
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          const box = p.size * HALO + 4;      // + antialiasing slack
+          ctx.clearRect(p.dx - box / 2, p.dy - box / 2, box, box);
+        }
+        painted = false;
+      }
       if (fade <= 0.001) return;
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
@@ -168,8 +179,10 @@ export default function Particles({ active }) {
         const d = p.size * HALO;
         ctx.globalAlpha = p.alpha * fade;
         ctx.drawImage(sprite, p.x - d / 2, p.y - d / 2, d, d);
+        p.dx = p.x; p.dy = p.y;              // where this one needs clearing next
       }
       ctx.globalAlpha = 1;
+      painted = true;
     };
 
     const resize = () => {
@@ -190,6 +203,7 @@ export default function Particles({ active }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (first) seed();
       else particles.forEach((p) => { p.x *= sx; p.y *= sy; });
+      painted = false;           // assigning canvas.width already cleared it
       draw(false, surfaceOpacity());
     };
 
@@ -197,12 +211,13 @@ export default function Particles({ active }) {
 
     /* Two things run this loop and they are separate on purpose.
  
-       DRIFT is the field doing its job, and it waits for the entrance to be
-       over — see START_DELAY.
+       DRIFT is the field doing its job. It runs for as long as the tab is up,
+       and it is the reason the loop has no natural end.
  
        FOLLOW is the field matching the surface's opacity while that opacity is
        moving. It draws without advancing anything, and it stops as soon as the
-       number settles: about twenty frames at each end of a switch. */
+       number reaches its target — which is how the field can leave with the
+       tab and still be cleared once it has gone. */
     let drifting = false;
     let target = 0;           // where the surface's opacity is heading
     let deadline = 0;         // hard stop, so following can never spin
@@ -211,7 +226,7 @@ export default function Particles({ active }) {
       const fade = surfaceOpacity();
       draw(drifting, fade);
       const arrived = Math.abs(fade - target) <= 0.002 || performance.now() > deadline;
-      if (!drifting && arrived) { raf = 0; return; }
+      if (!drifting && arrived) { if (fade <= 0.001) wipe(); raf = 0; return; }
       raf = requestAnimationFrame(loop);
     };
     const kick = () => {
@@ -232,7 +247,14 @@ export default function Particles({ active }) {
 
     // A background that keeps animating in a backgrounded tab is a battery
     // bug, not a feature.
-    const onVisibility = () => { if (document.hidden) stop(); };
+    /* Coming back has to work from every direction a browser offers, because
+       they do not agree on which one fires. Backgrounding a tab gives you
+       visibilitychange; minimising the window or switching apps on iOS can
+       give you pageshow (out of the back/forward cache) or nothing but focus.
+       Miss the one your browser used and the field is simply stopped — which
+       is what "when I minimise it the same thing happens" is. */
+    const resume = () => { if (!document.hidden && drifting) kick(); };
+    const onVisibility = () => { if (document.hidden) stop(); else resume(); };
     /* The surface can change opacity without React telling us — the pane's
        fade is a CSS animation. Following it whenever a switch begins is what
        the run effect below arranges. */
@@ -240,10 +262,14 @@ export default function Particles({ active }) {
     resize();
     window.addEventListener("resize", resize);
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", resume);
+    window.addEventListener("focus", resume);
     return () => {
       stop();
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", resume);
+      window.removeEventListener("focus", resume);
       runRef.current = { start: null, stop: null, follow: null, halt: null };
     };
   }, []);
@@ -262,9 +288,14 @@ export default function Particles({ active }) {
     const r = runRef.current;
     if (!r.follow) return undefined;
     if (!active) { r.halt(); r.follow(0); return undefined; }
+    /* Drifting from the first frame, not after a delay. The delay existed to
+       keep the canvas off the main thread during the entrance, and it worked —
+       but it also meant the field stood still for a second and a half every
+       time you came back to the tab, which is worse than the frames it saved.
+       The dirty-rect clear above is what pays for it. */
     r.follow(1);
-    const t = setTimeout(() => { if (runRef.current.start) runRef.current.start(); }, START_DELAY);
-    return () => clearTimeout(t);
+    r.start();
+    return undefined;
   }, [active]);
 
   /* The canvas never animates, and it is still not what fades.
