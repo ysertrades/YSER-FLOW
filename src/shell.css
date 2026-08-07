@@ -372,13 +372,34 @@
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.42);
 }
+/* ---------------------------------------------------------------------------
+   A window opening or closing is a STATE CHANGE, not an event, and it used to
+   land in a single frame: the arc flipped colour, the halo appeared, the bullet
+   lit, the row's text went from grey to white and its countdown from grey to
+   green — all at once, on a second boundary nobody was watching for. It read as
+   a glitch rather than as something happening.
+
+   Everything that differs between states now crosses over. 0.7s is long enough
+   to read as a change of state and short enough that it has finished before you
+   have looked twice; the arcs are slower still, because they are the largest
+   area and the fastest to look abrupt.
+--------------------------------------------------------------------------- */
+.sess-arc { transition: stroke 0.9s ease, opacity 0.9s ease; }
+.sess-nm, .sess-st, .sess-at,
+.sess-state, .sess-left, .sess-sublabel { transition: color 0.7s ease; }
+
 .sess-bul {
   width: 7px; height: 7px; border-radius: 50%; flex: none;
   background: rgba(255, 255, 255, 0.16);
+  transition: background 0.7s ease, box-shadow 0.7s ease;
 }
 .sess-bul.on   { background: #4ADE80; box-shadow: 0 0 10px rgba(74, 222, 128, 0.85); }
 .sess-bul.next { background: #0a84ff; box-shadow: 0 0 10px rgba(10, 132, 255, 0.7); }
 .sess-bul.done { background: rgba(255, 255, 255, 0.10); }
+/* box-shadow cannot interpolate between different layer counts, so the resting
+   state declares the same layer at zero spread rather than `none`. Without it
+   the glow appears instantly however long the transition is. */
+.sess-bul { box-shadow: 0 0 0 rgba(74, 222, 128, 0); }
 .sess-row.open .sess-nm { color: #fff; }
 .sess-row.open .sess-st { color: #4ADE80; }
 .sess-row.next .sess-st { color: #0a84ff; }
@@ -534,8 +555,20 @@
 .sess-now {
   transform-box: view-box;
   transform-origin: 150px 150px;
-  transition: transform 1.05s cubic-bezier(.22, .85, .3, 1);
 }
+/* Parked at midnight for one frame, with nothing to interpolate from. */
+.sess-now-park { transition: none; }
+/* The sweep. The old curve was cubic-bezier(.22,.85,.3,1), which put 10.7
+   degrees into the FIRST FRAME and then spent the remaining second creeping —
+   measured, and it is most of why the marker looked wrong. This one eases in
+   and out, so it leaves midnight the way a hand would and settles into place
+   instead of stalling on the approach. Keep the duration in step with
+   SWEEP_MS in Sessions.jsx. */
+.sess-now-sweep { transition: transform 1.15s cubic-bezier(.5, 0, .2, 1); }
+/* Following the clock. Linear and exactly one second, which is the tick
+   period, so consecutive updates chain into one continuous creep rather than
+   easing to a stop sixty times a minute. */
+.sess-now-live { transition: transform 1s linear; }
 
 /* The beat: a second dot under the real one, expanding and fading once a
    second. No filter on this one, unlike the dot it sits beneath — it runs
@@ -557,6 +590,9 @@
   .sess-dial, .sess-centre, .sess-centre > *,
   .sess-tracks, .sess-ticks, .sess-hours, .sess-marks,
   .sess-arc-g, .sess-arc-g.sess-arc-live, .sess-bul.on { animation: none; }
+  .sess-arc, .sess-nm, .sess-st, .sess-at, .sess-bul,
+  .sess-state, .sess-left, .sess-sublabel { transition: none; }
+  .sess-now-sweep, .sess-now-live { transition: none; }
   .sess-now { transition: none; }
   .sess-beat { display: none; }
 }
@@ -569,6 +605,12 @@
    painting before the pane is visible (Particles.jsx seeds and draws once on
    mount), so without this the field would be at full strength on the first
    frame while everything above it was still arriving. */
+/* No opacity of its own. It used to fade in over 0.55s with a 0.1s delay, on
+   the reasoning that the canvas is already painting before the pane is visible
+   — but the PANE's fade already covers that, and every other thing on this
+   screen arrives on it. A second, slower ramp on top meant the field was still
+   climbing to full strength half a second after the dial had settled, arriving
+   as its own separate event. It rides the pane now, like everything else. */
 .sess-particles {
   position: absolute;
   inset: 0;
@@ -577,15 +619,10 @@
   display: block;
   z-index: 0;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.55s ease 0.1s;
 }
-.sess-particles.on { opacity: 1; }
 
 /* Above the field. .sess-scroll had no stacking position of its own, so the
    canvas would have painted over the dial rather than behind it. */
 .sess-scroll { position: relative; z-index: 1; }
 
-@media (prefers-reduced-motion: reduce) {
-  .sess-particles { transition: none; }
-}
+

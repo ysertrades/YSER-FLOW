@@ -24,6 +24,10 @@ import { useEtTick, readDay, fmtCountdown, MARKS } from "./sessions";
 const CX = 150, CY = 150, R_OUT = 104, R_IN = 85;
 const OPEN = "#4ADE80";
 const NEXT = "#0a84ff";
+/* Keep in step with .sess-now-sweep in shell.css — the phase is released from
+   JS on a timer, so if the two drift the marker either jumps to live mid-travel
+   or sits frozen after it has arrived. */
+const SWEEP_MS = 1150;
 
 const dur = fmtCountdown;   // everything on this screen counts in seconds
 const ptAt = (m, r) => {
@@ -60,6 +64,12 @@ function Arc({ r, start, end, stroke, width, glow, live, track, i = 0 }) {
     strokeDashoffset: -((start / 1440) * C),
     transform: `rotate(-90 ${CX} ${CY})`,
   };
+  /* Stroke goes in `style`, not as an attribute. A presentation attribute is
+     the lowest rung of the cascade and Chromium will not run a transition off
+     a change to one — which is why the colour used to snap the moment a window
+     opened. In `style` it is a normal declaration and `transition: stroke`
+     works. */
+  const paint = (w, o) => ({ ...geom, strokeWidth: w, style: { stroke, opacity: o } });
   return (
     <g
       className={`sess-arc-g${track ? " sess-track-g" : ""}${live ? " sess-arc-live" : ""}`}
@@ -68,9 +78,13 @@ function Arc({ r, start, end, stroke, width, glow, live, track, i = 0 }) {
          stylesheet's 0px initial value would leave the ring blank. */
       style={{ "--arc-len": `${len}px`, "--i": i }}
     >
-      {glow && <circle className="sess-arc" {...geom} stroke={stroke} strokeWidth={width + 15} opacity={0.07} />}
-      {glow && <circle className="sess-arc" {...geom} stroke={stroke} strokeWidth={width + 7}  opacity={0.13} />}
-      <circle className="sess-arc" {...geom} stroke={stroke} strokeWidth={width} />
+      {/* The halo is always in the DOM, at zero opacity when the window is not
+          lit. Rendering it only when it glows meant it appeared by MOUNTING,
+          and a mount cannot transition — the glow popped into existence the
+          second a session opened. Present and transparent, it fades. */}
+      {!track && <circle className="sess-arc sess-halo" {...paint(width + 15, glow ? 0.07 : 0)} />}
+      {!track && <circle className="sess-arc sess-halo" {...paint(width + 7,  glow ? 0.13 : 0)} />}
+      <circle className="sess-arc" {...paint(width, 1)} />
     </g>
   );
 }
@@ -120,7 +134,27 @@ export default function Sessions({ active, ready = true, now }) {
   const runRef = useRef(0);
   const wasShown = useRef(false);
   const [run, setRun] = useState(0);
-  const [sweptRun, setSweptRun] = useState(-1);
+
+  /* The marker has three phases, and it needs all three.
+   *
+   *   park  — sitting at midnight, no transition, for exactly one frame
+   *   sweep — travelling to a FROZEN target, on the long ease
+   *   live  — following the clock, on a 1s linear transition
+   *
+   * The frozen target is the fix for the thing that made the sweep look bad.
+   * The clock re-renders once a second, and a CSS transition that is
+   * re-targeted mid-flight restarts from wherever it had reached with its full
+   * duration — so a tick landing a second into the sweep gave the last fraction
+   * of a degree another whole second to cover. Measured: the per-frame delta
+   * collapsed from 0.033 to 0.003 at t=1100ms and then crawled for another
+   * 800ms. That crawl is what read as lag; the marker had arrived and was still
+   * visibly finishing.
+   *
+   * Freezing costs nothing. The target is at most one sweep stale by the time
+   * it lands, and the day advances 0.004 degrees a second. */
+  const [phase, setPhase] = useState("live");
+  const [sweepTo, setSweepTo] = useState(0);
+  const liveAngleRef = useRef(0);
 
   useEffect(() => {
     if (shown === wasShown.current) return undefined;
@@ -129,19 +163,25 @@ export default function Sessions({ active, ready = true, now }) {
     // midnight in full view while the pane is still fading out.
     if (!shown) return undefined;
     runRef.current += 1;
-    const id = runRef.current;
-    setRun(id);
+    setRun(runRef.current);
+    setPhase("park");
     /* Two frames, and both are needed: the first paints the marker parked at
        midnight, the second moves it. Setting both in one frame gives the
        browser no start value to interpolate from and it jumps. */
-    let inner;
+    let inner, release;
     const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => setSweptRun(id));
+      inner = requestAnimationFrame(() => {
+        setSweepTo(liveAngleRef.current);
+        setPhase("sweep");
+        release = setTimeout(() => setPhase("live"), SWEEP_MS + 80);
+      });
     });
-    return () => { cancelAnimationFrame(outer); if (inner) cancelAnimationFrame(inner); };
+    return () => {
+      cancelAnimationFrame(outer);
+      if (inner) cancelAnimationFrame(inner);
+      if (release) clearTimeout(release);
+    };
   }, [shown]);
-
-  const swept = sweptRun === run;
 
   /* Where "now" is, as a rotation rather than a point. Drawing the marker at
      the top and rotating the group is not just tidier than trigonometry per
@@ -157,6 +197,9 @@ export default function Sessions({ active, ready = true, now }) {
   if (lastRaw.current !== null && raw < lastRaw.current - 180) turns.current += 1;
   lastRaw.current = raw;
   const nowAngle = raw + turns.current * 360;
+  liveAngleRef.current = nowAngle;   // what the sweep freezes when it starts
+
+  const markerAngle = phase === "park" ? 0 : phase === "sweep" ? sweepTo : nowAngle;
 
   /* It rides the same .pane machinery the editor and guide use, so switching to
      it crossfades exactly like every other tab instead of cutting. That also
@@ -262,11 +305,8 @@ export default function Sessions({ active, ready = true, now }) {
                   creep, which is 0.0042° and would otherwise be a step. */}
               {!closed && (
                 <g
-                  className="sess-now"
-                  style={{
-                    transform: `rotate(${swept ? nowAngle : 0}deg)`,
-                    transition: swept ? undefined : "none",
-                  }}
+                  className={`sess-now sess-now-${phase}`}
+                  style={{ transform: `rotate(${markerAngle}deg)` }}
                 >
                   <line
                     x1={CX} y1={CY - (R_IN - 13)} x2={CX} y2={CY - (R_OUT - 10)}
