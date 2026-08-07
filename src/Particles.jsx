@@ -127,8 +127,30 @@ export default function Particles({ active }) {
       });
     };
 
-    const draw = (move) => {
+    /* How much of the field should be showing: exactly as much of the surface
+       it belongs to as is currently showing.
+ 
+       Reading it off the pane rather than re-deriving it is the point. Every
+       previous attempt matched the pane's fade by writing the same duration,
+       delay and easing somewhere else and trusting the two to agree — and each
+       time the browser composited them out of step anyway. There is nothing to
+       drift here: it is the same number. */
+    let paneEl = null;
+    const surfaceOpacity = () => {
+      if (!paneEl || !paneEl.isConnected) {
+        const sc = document.querySelector(".sess-scroll");
+        paneEl = sc ? sc.closest(".pane") : null;
+      }
+      if (!paneEl) return 1;
+      const cs = getComputedStyle(paneEl);
+      if (cs.visibility === "hidden") return 0;
+      const o = parseFloat(cs.opacity);
+      return Number.isFinite(o) ? o : 1;
+    };
+
+    const draw = (move, fade) => {
       ctx.clearRect(0, 0, w, h);
+      if (fade <= 0.001) return;
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         if (move) {
@@ -144,7 +166,7 @@ export default function Particles({ active }) {
         // the sprite's core is a fraction of its box, so it is drawn well
         // wider than the dot and the tail does the rest
         const d = p.size * HALO;
-        ctx.globalAlpha = p.alpha;
+        ctx.globalAlpha = p.alpha * fade;
         ctx.drawImage(sprite, p.x - d / 2, p.y - d / 2, d, d);
       }
       ctx.globalAlpha = 1;
@@ -168,20 +190,52 @@ export default function Particles({ active }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (first) seed();
       else particles.forEach((p) => { p.x *= sx; p.y *= sy; });
-      draw(false);
+      draw(false, surfaceOpacity());
     };
 
-    const tick = () => { draw(true); raf = requestAnimationFrame(tick); };
     const stop = () => { if (raf) { cancelAnimationFrame(raf); raf = 0; } };
-    const start = () => {
-      if (raf || reduced || document.hidden) return;
-      raf = requestAnimationFrame(tick);
+
+    /* Two things run this loop and they are separate on purpose.
+ 
+       DRIFT is the field doing its job, and it waits for the entrance to be
+       over — see START_DELAY.
+ 
+       FOLLOW is the field matching the surface's opacity while that opacity is
+       moving. It draws without advancing anything, and it stops as soon as the
+       number settles: about twenty frames at each end of a switch. */
+    let drifting = false;
+    let target = 0;           // where the surface's opacity is heading
+    let deadline = 0;         // hard stop, so following can never spin
+
+    const loop = () => {
+      const fade = surfaceOpacity();
+      draw(drifting, fade);
+      const arrived = Math.abs(fade - target) <= 0.002 || performance.now() > deadline;
+      if (!drifting && arrived) { raf = 0; return; }
+      raf = requestAnimationFrame(loop);
     };
-    runRef.current = { start, stop };
+    const kick = () => {
+      if (raf || reduced || document.hidden) return;
+      raf = requestAnimationFrame(loop);
+    };
+    /* A TARGET, not a threshold. Testing "has it settled at 0 or 1" looks
+       equivalent and is exactly backwards: those are the values the fade STARTS
+       from. Leaving, the first frame reads 1 and the loop quit on the spot,
+       leaving the field painted at full strength over the outgoing surface —
+       which is the flash, still there after three fixes aimed elsewhere.
+       Arriving, the first frame reads 0 and it quit just as fast, leaving the
+       canvas blank until the drift loop started a second later. */
+    const follow = (to) => { target = to; deadline = performance.now() + 900; kick(); };
+    const start = () => { drifting = true; kick(); };
+    const halt = () => { drifting = false; };
+    runRef.current = { start, stop, follow, halt };
 
     // A background that keeps animating in a backgrounded tab is a battery
     // bug, not a feature.
     const onVisibility = () => { if (document.hidden) stop(); };
+    /* The surface can change opacity without React telling us — the pane's
+       fade is a CSS animation. Following it whenever a switch begins is what
+       the run effect below arranges. */
 
     resize();
     window.addEventListener("resize", resize);
@@ -190,13 +244,25 @@ export default function Particles({ active }) {
       stop();
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", onVisibility);
-      runRef.current = { start: null, stop: null };
+      runRef.current = { start: null, stop: null, follow: null, halt: null };
     };
   }, []);
 
-  // ---- run: only while the tab is up, and only once it has finished arriving
+  /* ---- run ---------------------------------------------------------------
+   * Follow the surface's opacity through every switch, in both directions, and
+   * drift only once the entrance is over.
+   *
+   * The canvas has no CSS opacity of its own, no veil over it, and no animating
+   * ancestor. Nothing about the layer changes, ever — the fade is in the
+   * PIXELS. That is the whole point: a static layer cannot be composited out of
+   * step with itself, which is what every previous version was asking a browser
+   * not to do.
+   * ---------------------------------------------------------------------- */
   useEffect(() => {
-    if (!active) { if (runRef.current.stop) runRef.current.stop(); return undefined; }
+    const r = runRef.current;
+    if (!r.follow) return undefined;
+    if (!active) { r.halt(); r.follow(0); return undefined; }
+    r.follow(1);
     const t = setTimeout(() => { if (runRef.current.start) runRef.current.start(); }, START_DELAY);
     return () => clearTimeout(t);
   }, [active]);
@@ -220,14 +286,11 @@ export default function Particles({ active }) {
    * It costs one more layer of a single flat colour, and it is the only version
    * of this that is right in both directions at once. */
   return (
-    <>
-      <canvas
-        ref={canvasRef}
-        className="sess-particles"
-        aria-hidden="true"
-        role="presentation"
-      />
-      <div className={`sess-veil${active ? " lifted" : ""}`} aria-hidden="true" />
-    </>
+    <canvas
+      ref={canvasRef}
+      className="sess-particles"
+      aria-hidden="true"
+      role="presentation"
+    />
   );
 }

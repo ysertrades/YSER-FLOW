@@ -726,44 +726,34 @@ body{
 }
 
 /* ═══════════════════════ GLASS ═══════════════════════
-   The app draws its panels as rgba(252,252,252,0.62) with a 1.4px
-   hairline at rgba(0,0,0,0.055) and a 20px/5px shadow. Same recipe. */
+   The Sessions table's card, to the value. That surface is the app's .glass
+   token and nothing else — no drop shadow and no lit lip — so this is the whole
+   recipe:
+
+       background      rgba(0,0,0,.2)
+       backdrop-filter blur(7px)
+       border          0.4px solid rgba(176,176,176,.1)
+       border-radius   20px
+
+   Sizes, padding, type and layout are untouched; only the surface changed.
+
+   The blur is carried for fidelity rather than for effect. This deck's ground
+   is flat, and a Gaussian blur of a flat colour returns that colour — measured
+   earlier on this same card at a maximum delta of 3 out of 765. It is here so
+   the two surfaces are the same declaration rather than the same appearance by
+   coincidence, and at 7px it costs a fraction of the 30px version that was
+   removed. */
 .panel{
   position:relative;
-  background:var(--glass);
-  border:1px solid var(--hair);
-  border-radius:26px;
-  /* No backdrop-filter, and that is deliberate rather than an omission.
-     A Gaussian blur of a smooth gradient returns the same smooth gradient —
-     there is no detail behind this card to smear, only the ground and one soft
-     bloom. Measured on the card surface with the type hidden: blur(30px) against
-     no filter at all came out at a maximum delta of 3 out of 765 and a mean of
-     0, and against saturate() alone it was identical to the pixel. It cost 21fps
-     of the desktop fade (41 against 62) to change nothing.
-
-     The translucency is what shows the bloom through, and that is kept. */
-  box-shadow:var(--shade), inset 0 1px 0 var(--edge);
+  background:rgba(0,0,0,.2);
+  backdrop-filter:blur(7px);
+  -webkit-backdrop-filter:blur(7px);
+  border:0.4px solid rgba(176,176,176,.1);
+  border-radius:20px;
   padding:clamp(20px,3.4vw,46px);
   display:flex; flex-direction:column; gap:clamp(16px,2.1vw,26px);
-  overflow:hidden;                 /* clips the lit lip to the radius */
+  overflow:hidden;
 }
-
-/* The lit lip — the detail that sells it. On real glass the edge catches light
-   and the face does not, so a 1px highlight runs across the top and fades to
-   nothing at both ends, brightest in the middle where a source would strike it.
-   With the inset hairline in the box-shadow the top edge reads as a bevel. */
-.panel::before{
-  content:""; position:absolute; inset:0 0 auto 0; height:1px;
-  background:linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
-  pointer-events:none; z-index:1;
-}
-
-/* No @supports fallback here any more. It existed to cover browsers without
-   backdrop-filter, and going opaque was the safe failure when the card depended
-   on the filter for legibility. Nothing sits behind the card now except the
-   ground and the bloom, so a translucent card is safe everywhere and forcing it
-   opaque on older browsers would only cost them the light. --glass-solid is kept
-   as the token to reach for if a future slide ever floats over content. */
 
 /* ═══════════════════════ TYPE ═══════════════════════ */
 .head{display:flex; flex-direction:column; gap:9px;}
@@ -1151,11 +1141,15 @@ input[type="range"]::-moz-range-thumb{
   bottom:calc(var(--nav-gap) + env(safe-area-inset-bottom, 0px));
   display:flex; align-items:center; gap:5px;
   padding:6px 8px; border-radius:999px;
-  background:rgba(9,12,18,.62);
+  /* The app's tab switcher, to the value — same background, same hairline,
+     same top-edge inset. The two pills are the same control in two documents
+     and now say so. Whole pixels on the border, not 0.5: a fractional border
+     lands between device pixels and shimmers while the pill is moving. */
+  background:rgba(0,0,0,.38);
   backdrop-filter:blur(7px);
   -webkit-backdrop-filter:blur(7px);
-  border:1px solid var(--hair-2);
-  box-shadow:inset 0 1px 0 var(--edge);
+  border:1px solid rgba(255,255,255,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
   max-width:calc(100vw - 24px);
 }
 
@@ -1222,7 +1216,9 @@ input[type="range"]::-moz-range-thumb{
   h2{font-size:clamp(23px,6.4vw,30px); letter-spacing:-.026em;}
   .lead{font-size:15.5px; line-height:1.5;}
   .sub{font-size:12px;}
-  .panel{gap:15px; border-radius:18px;}
+  /* Radius stays 20px at every width — the Sessions table does not tighten its
+     corners on a phone, and matching it was the point. Only the gap changes. */
+  .panel{gap:15px;}
   .two{gap:18px;}
   .col{gap:13px;}
   .head{gap:7px;}
