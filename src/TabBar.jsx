@@ -55,11 +55,12 @@ const SessionsIcon = () => (
   </svg>
 );
 
-/* Sessions sits second, next to the calculator. Both answer "what should I be
-   doing right now"; the editor and the guide are what you reach for after. */
+/* Sessions leads. It is the only tab that is useful before you have decided
+   anything — it answers "what is happening right now", which is the question
+   you arrive with. Sizing, the card and the guide all follow from that. */
 const TABS = [
-  { id: "flow",     label: "Risk calculator",   Icon: CalcIcon },
   { id: "sessions", label: "Sessions",          Icon: SessionsIcon },
+  { id: "flow",     label: "Risk calculator",   Icon: CalcIcon },
   { id: "card",     label: "Trade card editor", Icon: CardIcon },
   { id: "guide",    label: "Guide",             Icon: GuideIcon },
 ];

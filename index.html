@@ -61,7 +61,17 @@
         z-index: 9999;          /* over .pane (100) and .tabbar-dock (120) */
         display: grid;
         place-items: center;
-        background: #121212;
+        /* #121212 plus the app's own .bg-layer wash, character for character.
+           The intro is a separate inline document, so the two grounds are
+           written twice and have to agree — or the handoff steps a couple of
+           levels the moment the overlay clears. It only ever matched by luck:
+           the calculator's surface sat over the wash and hid it, so landing on
+           Sessions instead put the wash on screen and the seam appeared.
+           Keep in step with .bg-layer in shell.css. */
+        background:
+          radial-gradient(130% 85% at 50%   0%, rgba(255,255,255,0.035), rgba(255,255,255,0) 62%),
+          radial-gradient(120% 60% at 50% 100%, rgba(255,255,255,0.030), rgba(255,255,255,0) 70%),
+          #121212;
         animation: introOut var(--intro-out) cubic-bezier(.4, 0, .2, 1)
                    var(--intro-hold) both;
       }

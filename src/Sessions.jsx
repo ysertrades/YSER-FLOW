@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useEtTick, readDay, MARKS } from "./sessions";
+import { useEtTick, readDay, fmtCountdown, MARKS } from "./sessions";
 
 /* ---------------------------------------------------------------------------
  * Sessions — the trading day as a 24-hour dial.
@@ -24,18 +24,7 @@ const CX = 150, CY = 150, R_OUT = 104, R_IN = 85;
 const OPEN = "#4ADE80";
 const NEXT = "#0a84ff";
 
-const fmtTime = (m) => {
-  m = ((m % 1440) + 1440) % 1440;
-  const h = Math.floor(m / 60), mm = m % 60;
-  const ap = h < 12 ? "AM" : "PM";
-  let hh = h % 12; if (hh === 0) hh = 12;
-  return `${hh}:${String(mm).padStart(2, "0")} ${ap}`;
-};
-const dur = (m) => {
-  if (m >= 1440) return `${Math.round(m / 1440)}d`;
-  const h = Math.floor(m / 60), mm = Math.round(m % 60);
-  return h ? `${h}h ${mm}m` : `${mm}m`;
-};
+const dur = fmtCountdown;   // everything on this screen counts in seconds
 const ptAt = (m, r) => {
   const a = (m / 1440) * 2 * Math.PI - Math.PI / 2;
   return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
@@ -85,7 +74,7 @@ function Row({ w, nextKey, closed, sub }) {
 }
 
 export default function Sessions({ active, now }) {
-  useEtTick();                       // re-render on the second boundary
+  useEtTick(active);                 // ticks only while this tab is up
   const d = readDay(now);            // `now` is only ever passed by the tests
   const { closed, ring, sub, upcoming, nextKey, openSub, primary } = d;
 
@@ -115,136 +104,138 @@ export default function Sessions({ active, now }) {
     <div className={`pane ${paneState}`} aria-hidden={!active}>
       <div className="sess-scroll">
         <div className="sess-wrap">
-      <div className="sess-head">
-        <b>{dayName}</b><span>·</span><span>New York</span>
-        <i aria-hidden="true" /><span>ET</span>
-      </div>
+          <div className="sess-head">
+            <b>{dayName}</b><span>·</span><span>New York</span>
+            <i aria-hidden="true" /><span>ET</span>
+          </div>
 
-      <div className="sess-dial-wrap">
-        <svg className="sess-dial" viewBox="0 0 300 300" role="img"
-             aria-label={closed ? "Market closed for the weekend"
-               : primary ? `${primary.name}, ${dur(primary.remaining)} remaining`
-               : "No session open"}>
-          <defs>
-            <filter id="sessGlow" x="-60%" y="-60%" width="220%" height="220%">
-              <feGaussianBlur stdDeviation="4" result="b" />
-              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-            </filter>
-          </defs>
+          <div className="sess-dial-wrap">
+            <svg className="sess-dial" viewBox="0 0 300 300" role="img"
+                 aria-label={closed ? "Market closed for the weekend"
+                   : primary ? `${primary.name}, ${dur(primary.remaining)} remaining`
+                   : "No session open"}>
+              <defs>
+                <filter id="sessGlow" x="-60%" y="-60%" width="220%" height="220%">
+                  <feGaussianBlur stdDeviation="4" result="b" />
+                  <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
 
-          {/* hour ticks, heavier every six */}
-          {Array.from({ length: 24 }, (_, h) => {
-            const major = h % 6 === 0;
-            const a = ptAt(h * 60, R_OUT + 9);
-            const b = ptAt(h * 60, R_OUT + (major ? 17 : 13));
-            return <line key={h} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
-              stroke={major ? "rgba(255,255,255,.30)" : "rgba(255,255,255,.10)"}
-              strokeWidth={major ? 1.6 : 1} strokeLinecap="round" />;
-          })}
+              {/* hour ticks, heavier every six */}
+              {Array.from({ length: 24 }, (_, h) => {
+                const major = h % 6 === 0;
+                const a = ptAt(h * 60, R_OUT + 9);
+                const b = ptAt(h * 60, R_OUT + (major ? 17 : 13));
+                return <line key={h} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
+                  stroke={major ? "rgba(255,255,255,.30)" : "rgba(255,255,255,.10)"}
+                  strokeWidth={major ? 1.6 : 1} strokeLinecap="round" />;
+              })}
 
-          {[[0, "12a"], [360, "6a"], [720, "12p"], [1080, "6p"]].map(([m, label]) => {
-            const p = ptAt(m, R_OUT + 30);
-            return <text key={label} x={p[0]} y={p[1]} fill="rgba(255,255,255,.34)"
-              fontSize="10.5" fontWeight="700" textAnchor="middle"
-              dominantBaseline="central" letterSpacing=".08em"
-              style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{label}</text>;
-          })}
+              {[[0, "12a"], [360, "6a"], [720, "12p"], [1080, "6p"]].map(([m, label]) => {
+                const p = ptAt(m, R_OUT + 30);
+                return <text key={label} x={p[0]} y={p[1]} fill="rgba(255,255,255,.34)"
+                  fontSize="10.5" fontWeight="700" textAnchor="middle"
+                  dominantBaseline="central" letterSpacing=".08em"
+                  style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{label}</text>;
+              })}
 
-          {/* the tracks */}
-          <Arc r={R_OUT} start={0} end={1440} stroke="rgba(255,255,255,.055)" width={12} />
-          <Arc r={R_IN}  start={0} end={1440} stroke="rgba(255,255,255,.04)"  width={7} />
+              {/* the tracks */}
+              <Arc r={R_OUT} start={0} end={1440} stroke="rgba(255,255,255,.055)" width={12} />
+              <Arc r={R_IN}  start={0} end={1440} stroke="rgba(255,255,255,.04)"  width={7} />
 
-          {ring.map((w) => (
-            <Arc key={w.key} r={R_OUT} start={w.start} end={w.end} width={12}
-              stroke={colourFor(w, nextKey, "rgba(255,255,255,.22)", "rgba(255,255,255,.08)")}
-              glow={w.state === "open" || w.key === nextKey} />
-          ))}
-          {sub.map((w) => (
-            <Arc key={w.key} r={R_IN} start={w.start} end={w.end} width={7}
-              stroke={colourFor(w, nextKey, "rgba(255,255,255,.18)", "rgba(255,255,255,.07)")}
-              glow={w.state === "open" || w.key === nextKey} />
-          ))}
+              {ring.map((w) => (
+                <Arc key={w.key} r={R_OUT} start={w.start} end={w.end} width={12}
+                  stroke={colourFor(w, nextKey, "rgba(255,255,255,.22)", "rgba(255,255,255,.08)")}
+                  glow={w.state === "open" || w.key === nextKey} />
+              ))}
+              {sub.map((w) => (
+                <Arc key={w.key} r={R_IN} start={w.start} end={w.end} width={7}
+                  stroke={colourFor(w, nextKey, "rgba(255,255,255,.18)", "rgba(255,255,255,.07)")}
+                  glow={w.state === "open" || w.key === nextKey} />
+              ))}
 
-          {/* instants, drawn across both rings */}
-          {MARKS.map((mk) => {
-            const a = ptAt(mk.minute, R_IN - 7), b = ptAt(mk.minute, R_OUT + 6);
-            return <line key={mk.key} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
-              stroke="rgba(255,255,255,.13)" strokeWidth={1} strokeDasharray="2 3" />;
-          })}
+              {/* instants, drawn across both rings */}
+              {MARKS.map((mk) => {
+                const a = ptAt(mk.minute, R_IN - 7), b = ptAt(mk.minute, R_OUT + 6);
+                return <line key={mk.key} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
+                  stroke="rgba(255,255,255,.13)" strokeWidth={1} strokeDasharray="2 3" />;
+              })}
 
-          {/* now — a stub outside the inner ring, not a hand through the middle,
-              which would cut straight across the readout */}
-          {!closed && (() => {
-            const n1 = ptAt(d.totalMinutes, R_IN - 13);
-            const n2 = ptAt(d.totalMinutes, R_OUT - 10);
-            const dot = ptAt(d.totalMinutes, R_OUT);
-            return (
-              <g>
-                <line x1={n1[0]} y1={n1[1]} x2={n2[0]} y2={n2[1]}
-                  stroke="rgba(255,255,255,.45)" strokeWidth={1.4} strokeLinecap="round" />
-                <circle cx={dot[0]} cy={dot[1]} r={5.5} fill="#fff" filter="url(#sessGlow)" />
-              </g>
-            );
-          })()}
-        </svg>
+              {/* now — a stub outside the inner ring, not a hand through the middle,
+                  which would cut straight across the readout */}
+              {!closed && (() => {
+                /* d.dayFraction carries seconds, so the marker creeps rather than
+                   stepping once a minute — it has to agree with a countdown that is
+                   visibly ticking beside it. */
+                const nowM = d.dayFraction * 1440;
+                const n1 = ptAt(nowM, R_IN - 13);
+                const n2 = ptAt(nowM, R_OUT - 10);
+                const dot = ptAt(nowM, R_OUT);
+                return (
+                  <g>
+                    <line x1={n1[0]} y1={n1[1]} x2={n2[0]} y2={n2[1]}
+                      stroke="rgba(255,255,255,.45)" strokeWidth={1.4} strokeLinecap="round" />
+                    <circle cx={dot[0]} cy={dot[1]} r={5.5} fill="#fff" filter="url(#sessGlow)" />
+                  </g>
+                );
+              })()}
+            </svg>
 
-        <div className="sess-centre">
-          {closed ? (
-            <>
-              <div className="sess-clock sess-shut">CLOSED</div>
-              <div className="sess-state" style={{ color: "#ff6961" }}>Weekend</div>
-              <div className="sess-left">opens Sun 6:00 PM · {dur(d.reopenIn)}</div>
-            </>
-          ) : (
-            <>
-              <div className="sess-clock">
-                {hh}:{String(d.minutes).padStart(2, "0")}<small>{ampm}</small>
-              </div>
-              {primary ? (
+            <div className="sess-centre">
+              {closed ? (
                 <>
-                  <div className="sess-state" style={{ color: OPEN }}>{primary.name}</div>
-                  <div className="sess-left">{dur(primary.remaining)} left</div>
-                  {openSub && openSub !== primary && (
-                    <div className="sess-sublabel">
-                      {openSub.name.toLowerCase()} · {dur(openSub.remaining)}
-                    </div>
-                  )}
+                  <div className="sess-clock sess-shut">CLOSED</div>
+                  <div className="sess-state" style={{ color: "#ff6961" }}>Weekend</div>
+                  <div className="sess-left">opens Sun 6 PM · {dur(d.reopenIn)}</div>
                 </>
               ) : (
                 <>
-                  <div className="sess-state sess-none">No window open</div>
-                  <div className="sess-left">
-                    {upcoming[0] ? `${upcoming[0].name} in ${dur(upcoming[0].until)}` : "—"}
+                  <div className="sess-clock">
+                    {hh}:{String(d.minutes).padStart(2, "0")}<small>{ampm}</small>
                   </div>
+                  {primary ? (
+                    <>
+                      <div className="sess-state" style={{ color: OPEN }}>{primary.name}</div>
+                      <div className="sess-left">{dur(primary.remaining)} left</div>
+                      {/* The name only. It used to carry its own countdown too, which
+                          made the longest line on the screen — it wrapped, and the
+                          orphaned "00S" landed on top of the arcs. It was also very
+                          nearly redundant: a sub-window ends with its parent more
+                          often than not, so the two countdowns read the same. The
+                          live one for this window is in the Today list directly
+                          below, nested under the session it belongs to. */}
+                      {openSub && openSub !== primary && (
+                        <div className="sess-sublabel">{openSub.name}</div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="sess-state sess-none">No window open</div>
+                      {/* Deliberately no name here. "London Killzone in 2h 15m" is
+                          wider than the ring at every size that stays legible, and
+                          the list below already names what is next and marks it
+                          blue — the same blue as the arc on the dial. */}
+                      <div className="sess-left">
+                        {upcoming[0] ? `next in ${dur(upcoming[0].until)}` : "—"}
+                      </div>
+                    </>
+                  )}
                 </>
               )}
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="sess-block glass">
-        <div className="sess-blabel">Next</div>
-        {upcoming.length === 0 ? (
-          <div className="sess-row done">
-            <span className="sess-bul done" aria-hidden="true" />
-            <span className="sess-nm">Nothing left today</span>
+            </div>
           </div>
-        ) : upcoming.slice(0, 2).map((w, i) => (
-          <div key={w.key} className={`sess-row${i === 0 ? " next" : ""}`}>
-            <span className={`sess-bul ${i === 0 ? "next" : ""}`} aria-hidden="true" />
-            <span className="sess-nm">{w.name}</span>
-            <span className="sess-at">{fmtTime(w.start)}</span>
-            <span className="sess-st">in {dur(w.until)}</span>
-          </div>
-        ))}
-      </div>
 
-      <div className="sess-block glass">
-        <div className="sess-blabel">Today</div>
-        {listed.map(({ w, sub: isSub }) => (
-          <Row key={w.key} w={w} nextKey={nextKey} closed={closed} sub={isSub} />
-        ))}
+          <div className="sess-block glass">
+            <div className="sess-blabel">Today</div>
+            {listed.map(({ w, sub: isSub }) => (
+              <Row key={w.key} w={w} nextKey={nextKey} closed={closed} sub={isSub} />
+            ))}
+          </div>
+
+          {/* the same signature the calculator carries at the foot of its scroll */}
+          <div className="signature">
+            <span className="signature-rule" aria-hidden="true" />
+            <span className="signature-mark">Built by <em>yasser</em></span>
           </div>
         </div>
       </div>

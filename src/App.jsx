@@ -16,10 +16,10 @@ import { useAutoHideOnScroll, usePrefersReducedMotion } from "./useShellHooks";
  *   - the guide, because it holds your place in the deck
  */
 export default function App() {
-  const [tab, setTab] = useState("flow");
+  const [tab, setTab] = useState("sessions");   // the landing tab
   const flowScrollY = useRef(0);
   // Where the Back button in the guide returns you to.
-  const cameFrom = useRef("flow");
+  const cameFrom = useRef("sessions");
 
   const reduced = usePrefersReducedMotion();
   // Only the calculator scrolls the document; the other two are iframes whose
@@ -64,7 +64,11 @@ export default function App() {
   // the pane starts fading in leaves the pane fading in over nothing — you see
   // the ground through it and it reads as a flash. It stays displayed until the
   // incoming pane has finished covering it, then goes.
-  const [flowShown, setFlowShown] = useState(true);
+  /* Seeded from the landing tab rather than hardcoded true. With Sessions
+     first, `true` here meant the calculator painted underneath for the 240ms
+     the incoming pane spends fading in — visible through it, and a flash on the
+     very first frame of the app. */
+  const [flowShown, setFlowShown] = useState(tab === "flow");
   useEffect(() => {
     if (tab === "flow") { setFlowShown(true); return; }
     if (reduced) { setFlowShown(false); return; }
