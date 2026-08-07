@@ -291,7 +291,13 @@ export default function Calculator({ phase = "on" }) {
         }
         .wrap {
           min-height: 100vh;
-          background: transparent;      /* html/body paints the flat ground */
+          /* Opaque, and load-bearing: this is what hides the Sessions
+             particle field on this tab. The field is a permanent layer at
+             z-index -1 rather than something that fades in and out, so the
+             thing that covers it is ordinary painting order — an in-flow
+             block's background paints above a negative z-index. Same #121212
+             as html/body, so nothing looks different. */
+          background: #121212;
           /* 24px, not 50: --tabbar-reserve already carries a 14px gap above the
              pill, and the extra was pure overhang — enough to push an otherwise
              screen-sized page just past the fold. */
