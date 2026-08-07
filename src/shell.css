@@ -634,7 +634,6 @@
   .sess-state, .sess-left, .sess-sublabel { transition: none; }
   .sess-now-sweep, .sess-now-live { transition: none; }
   .sess-now-beat { display: none; }
-  .sess-particles { transition: none; }
   .sess-now { transition: none; }
 }
 
@@ -652,38 +651,35 @@
    screen arrives on it. A second, slower ramp on top meant the field was still
    climbing to full strength half a second after the dial had settled, arriving
    as its own separate event. It rides the pane now, like everything else. */
-/* Fixed, and OUTSIDE the pane. Inside it the canvas inherited the pane's
-   animating opacity, and a canvas is its own compositing layer — so it arrived
-   at full strength for a frame before the group opacity reached it, which is
-   the flash. It also rode the pane's 5px entrance translate, sliding the whole
-   background up under content that was arriving.
+/* THE CANVAS NEVER ANIMATES. That is the fix, and it took three attempts to
+   get to because each earlier one animated it differently instead.
 
-   Its own fade instead, on exactly the pane's timing and easing, so it still
-   arrives as part of the same movement rather than as a second event. That was
-   the fault with the previous version of this rule: 0.55s with a 0.1s delay
-   left the field still climbing half a second after the dial had settled.
+   A canvas is its own compositing layer. Every version that faded it — whether
+   by inheriting the pane's animating opacity, or with a transition of its own —
+   put a layer whose opacity is changing over a layer whose opacity is also
+   changing, and Safari composited the canvas at full strength before the fade
+   reached it. Full-strength dots over a half-faded dial, for a frame or two.
+   That is what "they flash and go back to normal" is, and it survived being
+   moved, retimed and given its own transition, because all three still animated
+   it.
 
-   z-index 0 puts it above the page ground and below every pane. visibility
-   parks it out of the paint entirely at rest — it is only ever on screen
-   while Sessions is. */
+   So it is a permanent background layer at a constant opacity, and what covers
+   it is ordinary painting order: z-index -1 puts it under every in-flow block
+   background, so the calculator's .wrap hides it with its own ground, and the
+   editor and guide hide it with their opaque iframes. Only Sessions is a
+   transparent surface, so only Sessions shows the field. Nothing fades, so
+   nothing can be composited out of step.
+
+   The drift still stops when the tab is not up — see Particles.jsx. This is
+   about paint, not about work. */
 .sess-particles {
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity var(--pane-out) var(--pane-ease),
-              visibility 0s linear var(--pane-out);
-}
-.sess-particles.on {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity var(--pane-in) var(--pane-ease) var(--pane-in-delay),
-              visibility 0s;
 }
 
 /* Above the field. .sess-scroll had no stacking position of its own, so the

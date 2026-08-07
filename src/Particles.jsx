@@ -204,7 +204,7 @@ export default function Particles({ active }) {
   return (
     <canvas
       ref={canvasRef}
-      className={`sess-particles${active ? " on" : ""}`}
+      className="sess-particles"
       aria-hidden="true"
       role="presentation"
     />
