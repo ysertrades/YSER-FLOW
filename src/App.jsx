@@ -117,8 +117,6 @@ export default function App() {
 
   return (
     <>
-      <div className="bg-layer" aria-hidden="true" />
-
       <Calculator phase={flowPhase} />
 
       {/* A React surface, not a vendored file, so it goes in directly rather

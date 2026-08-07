@@ -11,24 +11,26 @@
 }
 
 /* ---------------------------------------------------------------------------
-   backdrop-filter over a flat colour samples a constant, which is
-   mathematically a no-op — the bar would read as a plain dark chip at rest.
-   Two very soft radials (both under 4% white) fix that. At these values you do
-   not perceive a gradient; you perceive depth the moment something translucent
-   moves across it. One sits where the bar does.
+   THE GROUND IS FLAT. #121212, edge to edge, and nothing paints over it.
 
-   A scrim behind the bar was the obvious alternative and is wrong: it lands
-   *in* the backdrop, so the bar would blur an opaque surface and go flat again.
+   There used to be a .bg-layer here carrying two very soft radials, on the
+   argument that backdrop-filter over a flat colour samples a constant and is
+   therefore a no-op — the tab pill would read as a plain dark chip with nothing
+   to blur. The argument was sound and the result was still wrong: the calculator
+   is a column of opaque panels that covered the wash, so the two pools only ever
+   showed on Sessions and behind the launch intro. Two of the four surfaces had a
+   background the other two did not.
+
+   The pill loses nothing. It never needed the wash — it needed *content*
+   underneath, which is what it has: panels scroll under it on the calculator,
+   the vendored documents scroll under it in the editor and the guide, and the
+   drifting field in Sessions.jsx passes under it on the dial. All of that is
+   real detail to smear, which a static gradient never was.
+
+   Keep #121212 in step with html/body in index.html and #intro's background
+   there. Three declarations, one colour, and a mismatch shows as a step at the
+   launch handoff.
 --------------------------------------------------------------------------- */
-.bg-layer {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(130% 85% at 50%   0%, rgba(255,255,255,0.035), rgba(255,255,255,0) 62%),
-    radial-gradient(120% 60% at 50% 100%, rgba(255,255,255,0.030), rgba(255,255,255,0) 70%);
-}
 
 /* --------------------------------- dock ----------------------------------
    The dock moves; the bar does not. That split is the whole fix for the stray
@@ -408,10 +410,16 @@
 @media (max-width: 380px) {
   .sess-wrap { padding-left: 12px; padding-right: 12px; }
   .sess-block { padding-left: 12px; padding-right: 12px; }
-  .sess-row { gap: 8px; font-size: 13px; }
-  .sess-at { font-size: 10.5px; }
+  .sess-row { gap: 7px; font-size: 13px; }
+  .sess-at { font-size: 10px; }
   .sess-st { min-width: 56px; }
-  .sess-sub { padding-left: 10px; }
+  /* The nested row is the tightest on the page and it is not obvious why: it
+     pays for the elbow and the indent, its time reads "10:00 AM" rather than
+     "2:00 AM", and when the silver bullet is the window actually running its
+     status is "30m 00s left" instead of "done". All four land on the same row,
+     and only the name can give — so it was the one thing that truncated, and
+     only during the hour it matters most. */
+  .sess-sub { padding-left: 4px; }
 }
 
 /* ========================= the dial, in motion ============================
@@ -541,4 +549,33 @@
   .sess-arc, .sess-arc.sess-arc-live, .sess-bul.on { animation: none; }
   .sess-now { transition: none; }
   .sess-beat { display: none; }
+}
+
+/* The drifting field behind the dial. Outside .sess-scroll, so it holds still
+   while the list scrolls over it — a background that scrolls is a texture, and
+   this is meant to read as depth behind the screen rather than part of it.
+
+   It fades with the tab rather than appearing with it. The canvas is already
+   painting before the pane is visible (Particles.jsx seeds and draws once on
+   mount), so without this the field would be at full strength on the first
+   frame while everything above it was still arriving. */
+.sess-particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.55s ease 0.1s;
+}
+.sess-particles.on { opacity: 1; }
+
+/* Above the field. .sess-scroll had no stacking position of its own, so the
+   canvas would have painted over the dial rather than behind it. */
+.sess-scroll { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sess-particles { transition: none; }
 }

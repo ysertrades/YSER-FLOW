@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 
 // ---------------------------------------------------------------------------
@@ -250,6 +250,23 @@ export default function Calculator({ phase = "on" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasInputs]);
 
+  /* Measured, not guessed. The panel's two states differ by well over a
+     hundred pixels and neither height is knowable up front — the band pill
+     comes and goes, and the text wraps differently at every width. A
+     ResizeObserver on the content gives the shell a number to transition to
+     and keeps working when the window changes size or the copy changes. */
+  const resultsBodyRef = useRef(null);
+  const [resultsH, setResultsH] = useState(null);
+  useLayoutEffect(() => {
+    const el = resultsBodyRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const measure = () => setResultsH(el.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const reset = () => { setRiskAmount(""); setStopLoss(""); };
 
   return (
@@ -274,7 +291,7 @@ export default function Calculator({ phase = "on" }) {
         }
         .wrap {
           min-height: 100vh;
-          background: transparent;      /* .bg-layer paints the ground now */
+          background: transparent;      /* html/body paints the flat ground */
           /* 24px, not 50: --tabbar-reserve already carries a 14px gap above the
              pill, and the extra was pure overhang — enough to push an otherwise
              screen-sized page just past the fold. */
@@ -292,13 +309,22 @@ export default function Calculator({ phase = "on" }) {
         @media (prefers-reduced-motion: reduce) {
           .dropdown-menu { animation: none; }
           .results-fade-in, .results-fade-out { animation-duration: 0.01ms; }
+          .results-shell { transition: none; }
           .input-field:focus { transform: none; }
           .symbol-pill:hover, .contract-mini:hover { transform: none; }
         }
         .wrap * { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-        .results-fade-in { animation: resultsFadeIn 0.15s ease forwards; }
-        .results-fade-out { animation: resultsFadeOut 0.15s ease forwards; }
-        @keyframes resultsFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* A 3px rise on the way in and none on the way out. Results arriving is
+           the moment worth marking — it is the answer you asked for — and the
+           same movement in reverse on the way out would draw the eye to an
+           empty card instead. Quick either way: the numbers update as you type,
+           so anything languid here would lag your own keystrokes. */
+        .results-fade-in { animation: resultsFadeIn 0.19s cubic-bezier(.22,.8,.3,1) forwards; }
+        .results-fade-out { animation: resultsFadeOut 0.13s ease forwards; }
+        @keyframes resultsFadeIn {
+          from { opacity: 0; transform: translateY(3px); }
+          to   { opacity: 1; transform: none; }
+        }
         @keyframes resultsFadeOut { from { opacity: 1; } to { opacity: 0; } }
         .glass {
           background: rgba(0,0,0,0.2);
@@ -402,9 +428,24 @@ export default function Calculator({ phase = "on" }) {
           width: 100%;
           max-width: 560px;
           padding: 20px;
+          /* The same 16px .main-panel puts between the inputs and this card.
+             Without it the spec card below sat flush against this one — the
+             only seam in the column where two panels touched. */
+          margin-bottom: 16px;
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
           position: relative;
           z-index: 1;
+        }
+
+        /* The panel changes height when results replace the placeholder, and
+           that was the "jump": the fade was already there and already quick,
+           but the card snapped from two lines to a full result in one frame and
+           shoved everything below it down. Height is measured and transitioned,
+           so the card grows into the result while the result fades in — one
+           movement instead of a fade over a jump. */
+        .results-shell {
+          overflow: hidden;
+          transition: height 0.26s cubic-bezier(.22, .7, .3, 1);
         }
 
         /* Deliberately no accent. #0a84ff means "active" in this app — it is
@@ -589,6 +630,14 @@ export default function Calculator({ phase = "on" }) {
       <div className="glass contracts-panel">
         <div className="panel-label">Contracts</div>
 
+        {/* The shell carries the height; the body inside it is what gets
+            measured. Height stays auto until the first measurement lands, so
+            nothing is clipped if ResizeObserver is unavailable. */}
+        <div
+          className="results-shell"
+          style={resultsH == null ? undefined : { height: resultsH }}
+        >
+        <div ref={resultsBodyRef}>
         {showResults ? (
           <div className={resultsLeaving ? "results-fade-out" : "results-fade-in"}>
             <div className="contracts-grid">
@@ -627,6 +676,8 @@ export default function Calculator({ phase = "on" }) {
         ) : (
           <div className="empty-note results-fade-in">Enter a risk amount and stop loss to see contract sizing.</div>
         )}
+        </div>
+        </div>
 
         <button className="reset-btn" onClick={reset}>Reset Inputs</button>
       </div>
