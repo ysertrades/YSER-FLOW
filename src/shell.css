@@ -678,8 +678,40 @@
   width: 100%;
   height: 100%;
   display: block;
-  z-index: -1;
+  z-index: -2;
   pointer-events: none;
+}
+
+/* The veil. An opaque sheet of the ground colour directly over the canvas,
+   which lifts on the pane's timing — so the field arrives with the dial rather
+   than before it.
+ 
+   Why this rather than fading the canvas: fading the canvas by any route puts a
+   layer whose opacity is changing over another whose opacity is also changing,
+   and Safari paints the canvas at full strength before the fade reaches it.
+   Leaving it at a constant opacity has the opposite fault — the field stands at
+   full strength while the pane above is still at a third, which is bright dots
+   over a ghost dial for the length of the handover. A plain solid-colour div
+   composites the way anything does, and the canvas underneath never changes.
+ 
+   #121212 is the page ground, so at any opacity this changes nothing except how
+   much of the field shows through. Keep it in step with html/body. */
+.sess-veil {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: #121212;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--pane-out) var(--pane-ease);
+}
+.sess-veil.lifted {
+  opacity: 0;
+  transition: opacity var(--pane-in) var(--pane-ease) var(--pane-in-delay);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sess-veil { transition: none; }
 }
 
 /* Above the field. .sess-scroll had no stacking position of its own, so the
