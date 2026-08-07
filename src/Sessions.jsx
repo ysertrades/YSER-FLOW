@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useEtTick, readDay, fmtCountdown, MARKS } from "./sessions";
 
 /* ---------------------------------------------------------------------------
@@ -33,14 +33,19 @@ const ptAt = (m, r) => {
 /* An arc as a dash on a circle rather than a hand-built path: the visible dash
    is the window's share of the day, and the offset is where it starts. One line
    of maths instead of an arc-flag puzzle. */
-function Arc({ r, start, end, stroke, width, glow }) {
+function Arc({ r, start, end, stroke, width, glow, live, track, i = 0 }) {
   const C = 2 * Math.PI * r;
   const len = ((end - start) / 1440) * C;
   return (
     <circle
+      className={`sess-arc${track ? " sess-track" : ""}${live ? " sess-arc-live" : ""}`}
+      /* The dash length is a custom property rather than an attribute so the
+         entrance can animate it — see --arc-len in shell.css. Every arc sets
+         it, tracks included, or the stylesheet's 0px initial value would leave
+         the ring blank. */
+      style={{ "--arc-len": `${len}px`, "--i": i }}
       cx={CX} cy={CY} r={r} fill="none"
       stroke={stroke} strokeWidth={width} strokeLinecap="round"
-      strokeDasharray={`${len} ${C - len}`}
       strokeDashoffset={-((start / 1440) * C)}
       transform={`rotate(-90 ${CX} ${CY})`}
       filter={glow ? "url(#sessGlow)" : undefined}
@@ -73,10 +78,63 @@ function Row({ w, nextKey, closed, sub }) {
   );
 }
 
-export default function Sessions({ active, now }) {
+export default function Sessions({ active, ready = true, now }) {
   useEtTick(active);                 // ticks only while this tab is up
   const d = readDay(now);            // `now` is only ever passed by the tests
   const { closed, ring, sub, upcoming, nextKey, openSub, primary } = d;
+
+  /* ---------------------------------------------------------------------
+   * The entrance.
+   *
+   * One run per opening, not per mount: the dial is mounted for the life of
+   * the app so its clock survives tab switches, so mounting is not the moment
+   * anyone actually sees it. `run` keys the dial, which remounts it and
+   * restarts every CSS animation inside — cheaper to reason about than
+   * toggling classes and forcing reflows, and it is ~40 nodes.
+   *
+   * `ready` holds the very first run until the launch intro has cleared.
+   * ------------------------------------------------------------------- */
+  const shown = active && ready;
+  const runRef = useRef(0);
+  const wasShown = useRef(false);
+  const [run, setRun] = useState(0);
+  const [sweptRun, setSweptRun] = useState(-1);
+
+  useEffect(() => {
+    if (shown === wasShown.current) return undefined;
+    wasShown.current = shown;
+    // Leaving: change nothing. Rewinding the marker here would snap it back to
+    // midnight in full view while the pane is still fading out.
+    if (!shown) return undefined;
+    runRef.current += 1;
+    const id = runRef.current;
+    setRun(id);
+    /* Two frames, and both are needed: the first paints the marker parked at
+       midnight, the second moves it. Setting both in one frame gives the
+       browser no start value to interpolate from and it jumps. */
+    let inner;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setSweptRun(id));
+    });
+    return () => { cancelAnimationFrame(outer); if (inner) cancelAnimationFrame(inner); };
+  }, [shown]);
+
+  const swept = sweptRun === run;
+
+  /* Where "now" is, as a rotation rather than a point. Drawing the marker at
+     the top and rotating the group is not just tidier than trigonometry per
+     frame — it is what makes the sweep possible at all, because a rotation is
+     one animatable number and a pair of coordinates is not.
+
+     The angle is kept monotonic. Left raw it drops from 359.99 to 0 at
+     midnight, and the transition below would take that literally and spin the
+     marker backwards through the entire day, once a day. */
+  const turns = useRef(0);
+  const lastRaw = useRef(null);
+  const raw = d.dayFraction * 360;
+  if (lastRaw.current !== null && raw < lastRaw.current - 180) turns.current += 1;
+  lastRaw.current = raw;
+  const nowAngle = raw + turns.current * 360;
 
   /* It rides the same .pane machinery the editor and guide use, so switching to
      it crossfades exactly like every other tab instead of cutting. That also
@@ -109,7 +167,8 @@ export default function Sessions({ active, now }) {
             <i aria-hidden="true" /><span>ET</span>
           </div>
 
-          <div className="sess-dial-wrap">
+          {/* keyed on the run so every animation inside restarts each opening */}
+          <div className="sess-dial-wrap" key={run}>
             <svg className="sess-dial" viewBox="0 0 300 300" role="img"
                  aria-label={closed ? "Market closed for the weekend"
                    : primary ? `${primary.name}, ${dur(primary.remaining)} remaining`
@@ -122,63 +181,85 @@ export default function Sessions({ active, now }) {
               </defs>
 
               {/* hour ticks, heavier every six */}
-              {Array.from({ length: 24 }, (_, h) => {
-                const major = h % 6 === 0;
-                const a = ptAt(h * 60, R_OUT + 9);
-                const b = ptAt(h * 60, R_OUT + (major ? 17 : 13));
-                return <line key={h} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
-                  stroke={major ? "rgba(255,255,255,.30)" : "rgba(255,255,255,.10)"}
-                  strokeWidth={major ? 1.6 : 1} strokeLinecap="round" />;
-              })}
+              <g className="sess-ticks">
+                {Array.from({ length: 24 }, (_, h) => {
+                  const major = h % 6 === 0;
+                  const a = ptAt(h * 60, R_OUT + 9);
+                  const b = ptAt(h * 60, R_OUT + (major ? 17 : 13));
+                  return <line key={h} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
+                    stroke={major ? "rgba(255,255,255,.30)" : "rgba(255,255,255,.10)"}
+                    strokeWidth={major ? 1.6 : 1} strokeLinecap="round" />;
+                })}
+              </g>
 
-              {[[0, "12a"], [360, "6a"], [720, "12p"], [1080, "6p"]].map(([m, label]) => {
-                const p = ptAt(m, R_OUT + 30);
-                return <text key={label} x={p[0]} y={p[1]} fill="rgba(255,255,255,.34)"
-                  fontSize="10.5" fontWeight="700" textAnchor="middle"
-                  dominantBaseline="central" letterSpacing=".08em"
-                  style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{label}</text>;
-              })}
+              <g className="sess-hours">
+                {[[0, "12a"], [360, "6a"], [720, "12p"], [1080, "6p"]].map(([m, label]) => {
+                  const p = ptAt(m, R_OUT + 30);
+                  return <text key={label} x={p[0]} y={p[1]} fill="rgba(255,255,255,.34)"
+                    fontSize="10.5" fontWeight="700" textAnchor="middle"
+                    dominantBaseline="central" letterSpacing=".08em"
+                    style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{label}</text>;
+                })}
+              </g>
 
               {/* the tracks */}
-              <Arc r={R_OUT} start={0} end={1440} stroke="rgba(255,255,255,.055)" width={12} />
-              <Arc r={R_IN}  start={0} end={1440} stroke="rgba(255,255,255,.04)"  width={7} />
+              <g className="sess-tracks">
+                <Arc track r={R_OUT} start={0} end={1440} stroke="rgba(255,255,255,.055)" width={12} />
+                <Arc track r={R_IN}  start={0} end={1440} stroke="rgba(255,255,255,.04)"  width={7} />
+              </g>
 
+              {/* Arcs arrive in the order the day runs them, not in array order,
+                  so the ring fills the way time does. */}
               {ring.map((w) => (
                 <Arc key={w.key} r={R_OUT} start={w.start} end={w.end} width={12}
+                  i={[...ring].sort((a, b) => a.start - b.start).indexOf(w)}
                   stroke={colourFor(w, nextKey, "rgba(255,255,255,.22)", "rgba(255,255,255,.08)")}
-                  glow={w.state === "open" || w.key === nextKey} />
+                  glow={w.state === "open" || w.key === nextKey}
+                  live={w.state === "open"} />
               ))}
-              {sub.map((w) => (
+              {sub.map((w, n) => (
                 <Arc key={w.key} r={R_IN} start={w.start} end={w.end} width={7}
+                  i={ring.length + n}
                   stroke={colourFor(w, nextKey, "rgba(255,255,255,.18)", "rgba(255,255,255,.07)")}
-                  glow={w.state === "open" || w.key === nextKey} />
+                  glow={w.state === "open" || w.key === nextKey}
+                  live={w.state === "open"} />
               ))}
 
               {/* instants, drawn across both rings */}
-              {MARKS.map((mk) => {
-                const a = ptAt(mk.minute, R_IN - 7), b = ptAt(mk.minute, R_OUT + 6);
-                return <line key={mk.key} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
-                  stroke="rgba(255,255,255,.13)" strokeWidth={1} strokeDasharray="2 3" />;
-              })}
+              <g className="sess-marks">
+                {MARKS.map((mk) => {
+                  const a = ptAt(mk.minute, R_IN - 7), b = ptAt(mk.minute, R_OUT + 6);
+                  return <line key={mk.key} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
+                    stroke="rgba(255,255,255,.13)" strokeWidth={1} strokeDasharray="2 3" />;
+                })}
+              </g>
 
-              {/* now — a stub outside the inner ring, not a hand through the middle,
-                  which would cut straight across the readout */}
-              {!closed && (() => {
-                /* d.dayFraction carries seconds, so the marker creeps rather than
-                   stepping once a minute — it has to agree with a countdown that is
-                   visibly ticking beside it. */
-                const nowM = d.dayFraction * 1440;
-                const n1 = ptAt(nowM, R_IN - 13);
-                const n2 = ptAt(nowM, R_OUT - 10);
-                const dot = ptAt(nowM, R_OUT);
-                return (
-                  <g>
-                    <line x1={n1[0]} y1={n1[1]} x2={n2[0]} y2={n2[1]}
-                      stroke="rgba(255,255,255,.45)" strokeWidth={1.4} strokeLinecap="round" />
-                    <circle cx={dot[0]} cy={dot[1]} r={5.5} fill="#fff" filter="url(#sessGlow)" />
-                  </g>
-                );
-              })()}
+              {/* Now — a stub outside the inner ring, not a hand through the
+                  middle, which would cut straight across the readout.
+
+                  Drawn parked at midnight and rotated into place. On opening it
+                  sweeps from 12a round to the current time, which is the one
+                  animation that says what this screen is for: the day so far.
+                  After that the same transition just smooths the per-second
+                  creep, which is 0.0042° and would otherwise be a step. */}
+              {!closed && (
+                <g
+                  className="sess-now"
+                  style={{
+                    transform: `rotate(${swept ? nowAngle : 0}deg)`,
+                    transition: swept ? undefined : "none",
+                  }}
+                >
+                  <line
+                    x1={CX} y1={CY - (R_IN - 13)} x2={CX} y2={CY - (R_OUT - 10)}
+                    stroke="rgba(255,255,255,.45)" strokeWidth={1.4} strokeLinecap="round"
+                  />
+                  {/* the beat: one pulse a second, so the dial has a pulse even
+                      when every countdown on screen is hours away */}
+                  <circle className="sess-beat" cx={CX} cy={CY - R_OUT} r={5.5} fill="#fff" />
+                  <circle cx={CX} cy={CY - R_OUT} r={5.5} fill="#fff" filter="url(#sessGlow)" />
+                </g>
+              )}
             </svg>
 
             <div className="sess-centre">

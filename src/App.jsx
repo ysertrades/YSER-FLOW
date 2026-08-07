@@ -5,6 +5,11 @@ import StaticPane from "./StaticPane";
 import TabBar from "./TabBar";
 import { useAutoHideOnScroll, usePrefersReducedMotion } from "./useShellHooks";
 
+/* How long the calculator takes to leave, in ms. Must match --pane-out in
+   shell.css: the incoming pane's delay is set from the same budget, so if these
+   drift apart the two surfaces start overlapping again. */
+const LEAVE_MS = 140;
+
 /**
  * Shell. Holds the tab and renders all four surfaces at once — nothing is
  * ever conditionally unmounted:
@@ -60,21 +65,40 @@ export default function App() {
     if (tab === "flow") window.scrollTo(0, flowScrollY.current);
   }, [tab]);
 
-  // display:none is not animatable, so hiding the calculator on the same frame
-  // the pane starts fading in leaves the pane fading in over nothing — you see
-  // the ground through it and it reads as a flash. It stays displayed until the
-  // incoming pane has finished covering it, then goes.
-  /* Seeded from the landing tab rather than hardcoded true. With Sessions
-     first, `true` here meant the calculator painted underneath for the 240ms
-     the incoming pane spends fading in — visible through it, and a flash on the
-     very first frame of the app. */
-  const [flowShown, setFlowShown] = useState(tab === "flow");
+  /* The calculator's half of the handover. display:none is not animatable, so
+     it needs three states rather than two: on screen, leaving, gone.
+
+     This used to be a boolean that held the calculator displayed for 240ms
+     while the incoming pane faded up over it. Both surfaces are dark with light
+     type, so for most of that window you could read BOTH — the calculator's
+     labels crossing the dial's, doubled and offset. It read as the app
+     struggling rather than as a transition. Now it fades out on its own clock
+     and the incoming pane waits for it to go. */
+  const [flowPhase, setFlowPhase] = useState(tab === "flow" ? "on" : "off");
   useEffect(() => {
-    if (tab === "flow") { setFlowShown(true); return; }
-    if (reduced) { setFlowShown(false); return; }
-    const t = setTimeout(() => setFlowShown(false), 240);
+    if (tab === "flow") { setFlowPhase("on"); return undefined; }
+    if (reduced) { setFlowPhase("off"); return undefined; }
+    // Already gone: do not replay the fade every time you move between two
+    // surfaces that are both not the calculator.
+    setFlowPhase((p) => (p === "off" ? "off" : "leaving"));
+    const t = setTimeout(() => setFlowPhase("off"), LEAVE_MS);
     return () => clearTimeout(t);
   }, [tab, reduced]);
+
+  /* The launch intro covers the app for about a second and a half. Sessions is
+     the landing tab, so without this the dial powers up underneath the overlay
+     and you arrive to an animation that has already finished. The timeout is
+     the backstop — the intro's CSS clears it without any help from script, so
+     nothing here may depend on an event that might not come. */
+  const [booted, setBooted] = useState(() => !document.getElementById("intro"));
+  useEffect(() => {
+    const el = document.getElementById("intro");
+    if (!el) { setBooted(true); return undefined; }
+    const done = (e) => { if (!e || e.target === el) setBooted(true); };
+    el.addEventListener("animationend", done);
+    const t = setTimeout(done, 2600);
+    return () => { el.removeEventListener("animationend", done); clearTimeout(t); };
+  }, []);
 
   // Both panes mount themselves once the app has gone quiet. Deferring until a
   // tab is opened meant the first switch paid to parse the whole document —
@@ -95,12 +119,12 @@ export default function App() {
     <>
       <div className="bg-layer" aria-hidden="true" />
 
-      <Calculator hidden={!flowShown} />
+      <Calculator phase={flowPhase} />
 
       {/* A React surface, not a vendored file, so it goes in directly rather
           than through StaticPane — but it carries the same .pane classes, so
           the crossfade is identical to the two iframes below. */}
-      <Sessions active={tab === "sessions"} />
+      <Sessions active={tab === "sessions"} ready={booted} />
 
       <StaticPane
         active={tab === "card"}

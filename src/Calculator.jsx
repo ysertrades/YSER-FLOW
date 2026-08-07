@@ -195,7 +195,9 @@ function ContractMini({ symbol, subLabel, contracts, risk, accent }) {
 // ---------------------------------------------------------------------------
 // Main App
 // ---------------------------------------------------------------------------
-export default function Calculator({ hidden = false }) {
+/* `phase` is "on" | "leaving" | "off". The shell drives it so the calculator
+   fades out on the same clock the panes fade in on, rather than cutting. */
+export default function Calculator({ phase = "on" }) {
   const [riskAmount, setRiskAmount] = useState("");
   const [stopLoss, setStopLoss] = useState("");
   const [selectedPair, setSelectedPair] = useState("NQ");
@@ -540,7 +542,10 @@ export default function Calculator({ hidden = false }) {
         .empty-note { text-align: center; font-size: 12px; color: rgba(255,255,255,0.3); padding: 4px 0 12px; }
       `}</style>
 
-      <div className="wrap" style={hidden ? { display: "none" } : undefined}>
+      <div
+        className={`wrap${phase === "on" ? " wrap-in" : phase === "leaving" ? " wrap-out" : ""}`}
+        style={phase === "off" ? { display: "none" } : undefined}
+      >
       {/* The four session blocks used to sit here. They are the Sessions tab
           now, and this is a calculator. The eyebrow replaces them: it names the
           surface the way the dial's header does, so the two tabs open the same
