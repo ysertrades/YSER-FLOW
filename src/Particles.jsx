@@ -201,12 +201,33 @@ export default function Particles({ active }) {
     return () => clearTimeout(t);
   }, [active]);
 
+  /* The canvas never animates, and it is still not what fades.
+   *
+   * Fading the canvas itself — by any route, its own transition or an animating
+   * ancestor's group opacity — puts a compositing layer whose opacity is
+   * changing over another whose opacity is also changing, and Safari paints the
+   * canvas at full strength before the fade reaches it. But NOT fading it is
+   * just as wrong the other way: the field then stands at full strength while
+   * the pane above it is still at a third of its opacity, so for the length of
+   * the handover you get bright dots over a ghost dial.
+   *
+   * So a veil does the fading. It is an opaque sheet of the page's own ground
+   * colour sitting directly over the canvas, and it lifts on exactly the pane's
+   * timing — the field appears as the dial appears. The thing being animated is
+   * a plain solid-colour div, which composites the way anything does; the
+   * canvas underneath it never changes at all.
+   *
+   * It costs one more layer of a single flat colour, and it is the only version
+   * of this that is right in both directions at once. */
   return (
-    <canvas
-      ref={canvasRef}
-      className="sess-particles"
-      aria-hidden="true"
-      role="presentation"
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="sess-particles"
+        aria-hidden="true"
+        role="presentation"
+      />
+      <div className={`sess-veil${active ? " lifted" : ""}`} aria-hidden="true" />
+    </>
   );
 }
