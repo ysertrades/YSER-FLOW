@@ -195,3 +195,134 @@
   /* still needs to end up hidden, just without the fade */
   .pane-off { animation: none; visibility: hidden; opacity: 0; }
 }
+
+/* ============================== sessions ==================================
+   The dial tab. It rides the .pane machinery above, so it crossfades like the
+   editor and the guide rather than cutting, and it scrolls inside itself
+   instead of moving the document — which leaves the calculator's scroll
+   position alone while this is up.
+
+   Class names are all sess-* on purpose: Calculator.jsx renders its stylesheet
+   inline, after this file, so anything it also names would win the tie. Only
+   .glass is shared, deliberately, because both surfaces want the same card. */
+.sess-scroll {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+.sess-wrap {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-inline: auto;
+  width: 100%;
+  max-width: 560px;              /* the calculator's column, matched */
+  padding: calc(34px + env(safe-area-inset-top, 0px)) 18px
+           calc(24px + var(--tabbar-reserve, 0px));
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+  color: #fff;
+}
+
+/* the eyebrow, borrowed from the field guide: a label then a rule that runs to
+   the edge on flex:1, with nothing to measure */
+.sess-head {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.34);
+}
+.sess-head b { color: rgba(255, 255, 255, 0.82); font-weight: 700; }
+.sess-head i { flex: 1; height: 1px; background: rgba(255, 255, 255, 0.09); }
+
+.sess-dial-wrap { position: relative; width: 300px; height: 300px; margin-bottom: 22px; }
+.sess-dial { width: 300px; height: 300px; display: block; }
+.sess-centre {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  pointer-events: none;                 /* the dial underneath stays selectable */
+}
+.sess-clock {
+  font-size: 42px; font-weight: 700; letter-spacing: -0.03em; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.sess-clock.sess-shut { font-size: 30px; color: rgba(255, 255, 255, 0.55); letter-spacing: 0; }
+.sess-clock small { font-size: 15px; font-weight: 600; opacity: 0.5; margin-left: 4px; }
+.sess-state {
+  margin-top: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px; font-weight: 800;
+  letter-spacing: 0.16em; text-transform: uppercase;
+}
+.sess-state.sess-none { color: rgba(255, 255, 255, 0.42); }
+.sess-sublabel {
+  margin-top: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: #0a84ff;
+}
+.sess-left {
+  font-size: 13px; font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.sess-block { width: 100%; padding: 14px 16px 6px; margin-bottom: 12px; }
+.sess-blabel {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9.5px; font-weight: 800;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 4px;
+}
+.sess-row {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 0;
+  border-top: 0.4px solid rgba(176, 176, 176, 0.1);
+  font-size: 13.5px;
+}
+.sess-block .sess-row:first-of-type { border-top: 0; }
+.sess-nm { flex: 1; font-weight: 600; color: rgba(255, 255, 255, 0.9); }
+.sess-at {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; color: rgba(255, 255, 255, 0.34);
+  font-variant-numeric: tabular-nums;
+}
+.sess-st {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; font-weight: 700;
+  min-width: 62px; text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.42);
+}
+.sess-bul {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: rgba(255, 255, 255, 0.16);
+}
+.sess-bul.on   { background: #4ADE80; box-shadow: 0 0 10px rgba(74, 222, 128, 0.85); }
+.sess-bul.next { background: #0a84ff; box-shadow: 0 0 10px rgba(10, 132, 255, 0.7); }
+.sess-bul.done { background: rgba(255, 255, 255, 0.10); }
+.sess-row.open .sess-nm { color: #fff; }
+.sess-row.open .sess-st { color: #4ADE80; }
+.sess-row.next .sess-st { color: #0a84ff; }
+.sess-row.done .sess-nm { color: rgba(255, 255, 255, 0.4); }
+
+/* A window that sits INSIDE a session is nested under it — the silver bullet is
+   an hour within the NY killzone, and a flat list would have implied the two
+   were peers. The elbow draws that rather than leaving it to the indent. */
+.sess-sub { padding-left: 16px; }
+.sess-sub .sess-nm { font-size: 12.5px; font-weight: 500; color: rgba(255, 255, 255, 0.62); }
+.sess-sub .sess-bul { width: 5px; height: 5px; }
+.sess-tee {
+  width: 9px; height: 9px; margin-right: -4px; flex: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  border-bottom-left-radius: 3px;
+  transform: translateY(-4px);
+}

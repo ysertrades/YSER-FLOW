@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Calculator from "./Calculator";
+import Sessions from "./Sessions";
 import StaticPane from "./StaticPane";
 import TabBar from "./TabBar";
 import { useAutoHideOnScroll, usePrefersReducedMotion } from "./useShellHooks";
 
 /**
- * Shell. Holds the tab and renders all three surfaces at once — nothing is
+ * Shell. Holds the tab and renders all four surfaces at once — nothing is
  * ever conditionally unmounted:
  *
  *   - the calculator, because SessionBlock's staggered entrance animation
  *     replays on remount and looks jumpy
+ *   - sessions, because its clock would restart its first tick on every switch
  *   - the editor, because it holds the user's loaded screenshot and framing
  *   - the guide, because it holds your place in the deck
  */
@@ -90,6 +92,11 @@ export default function App() {
       <div className="bg-layer" aria-hidden="true" />
 
       <Calculator hidden={!flowShown} />
+
+      {/* A React surface, not a vendored file, so it goes in directly rather
+          than through StaticPane — but it carries the same .pane classes, so
+          the crossfade is identical to the two iframes below. */}
+      <Sessions active={tab === "sessions"} />
 
       <StaticPane
         active={tab === "card"}
