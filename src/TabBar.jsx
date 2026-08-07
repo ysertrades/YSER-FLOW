@@ -43,10 +43,25 @@ const GuideIcon = () => (
   </svg>
 );
 
+/* A clock face reading a killzone hour rather than 12:00 — the tab is about
+   where you are in the trading day, and a hand on the hour would have read as
+   a generic "time" glyph. Same 24x24 stroked construction as the rest. */
+const SessionsIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" strokeWidth="2"
+       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7.5V12l3 2" />
+  </svg>
+);
+
+/* Sessions sits second, next to the calculator. Both answer "what should I be
+   doing right now"; the editor and the guide are what you reach for after. */
 const TABS = [
-  { id: "flow",  label: "Risk calculator",   Icon: CalcIcon },
-  { id: "card",  label: "Trade card editor", Icon: CardIcon },
-  { id: "guide", label: "Guide",             Icon: GuideIcon },
+  { id: "flow",     label: "Risk calculator",   Icon: CalcIcon },
+  { id: "sessions", label: "Sessions",          Icon: SessionsIcon },
+  { id: "card",     label: "Trade card editor", Icon: CardIcon },
+  { id: "guide",    label: "Guide",             Icon: GuideIcon },
 ];
 
 export default function TabBar({ tab, onChange, hidden }) {
