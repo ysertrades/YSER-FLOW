@@ -137,20 +137,47 @@
   opacity: 1;
 }
 
-/* The entering surface fades in ON TOP of the one it replaces, rather than the
-   two cross-dissolving. A true cross-fade would blend the editor's near-white
-   page with the calculator's near-black one and wash grey through the middle
-   of every switch; covering avoids that entirely — you only ever see the new
-   surface arriving over the old one, never a mix of both.
+/* ---------------------------------------------------------------------------
+   The two surfaces do NOT overlap in time. That is the whole point of these
+   numbers, so keep them in step with LEAVE_MS in App.jsx.
 
-   An animation, not a transition. A pane that has just been inserted has no
+   This used to be a plain crossfade: the incoming pane faded up over 220ms
+   while the outgoing one stayed fully painted underneath for 240ms. Both
+   surfaces are dark with light type, so for most of that window you could read
+   *both* — the calculator's labels crossing the dial's, doubled and offset. It
+   read as the app struggling to keep up rather than as a transition.
+
+   An opaque ground on the incoming pane does not fix it. A surface at 50%
+   opacity shows half of whatever is behind it whatever colour it is painted,
+   so a dissolve between two legible screens always ghosts. The only fix is to
+   stop them being on screen together: the outgoing surface leaves over 140ms,
+   the incoming one starts at 110ms. The 30ms overlap is both of them under
+   20% — you cannot read either, so there is nothing to double.
+
+   Nothing flashes in the gap because every surface sits on the same ground.
+   The screen never goes anywhere; only what is on it changes.
+--------------------------------------------------------------------------- */
+:root {
+  --pane-out: 0.14s;
+  --pane-in: 0.2s;
+  --pane-in-delay: 0.11s;
+  --pane-ease: cubic-bezier(.22, .7, .3, 1);
+}
+
+/* An animation, not a transition. A pane that has just been inserted has no
    previous opacity to transition from, so a transition silently does nothing
-   and the pane snaps in at full opacity. Animations run on insertion. */
+   and the pane snaps in at full opacity. Animations run on insertion.
+
+   The 5px rise is small on purpose: enough that the surface reads as arriving
+   rather than materialising, not so much that the whole page appears to slide. */
 .pane-on {
   z-index: 101;
-  animation: paneIn 0.22s cubic-bezier(.4, 0, .2, 1) both;
+  animation: paneIn var(--pane-in) var(--pane-ease) var(--pane-in-delay) both;
 }
-@keyframes paneIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes paneIn {
+  from { opacity: 0; transform: translate3d(0, 5px, 0); }
+  to   { opacity: 1; transform: none; }
+}
 
 /* Leaving. An animation again, and for a less obvious reason than arriving:
    removing .pane-on cancels an animation that was holding opacity at 1 through
@@ -163,12 +190,12 @@
    snap it mid-way, since discrete properties do not interpolate. */
 .pane-off {
   pointer-events: none;
-  animation: paneOut 0.22s cubic-bezier(.4, 0, .2, 1) both;
+  animation: paneOut var(--pane-out) var(--pane-ease) both;
 }
 @keyframes paneOut {
-  from { opacity: 1; visibility: visible; }
+  from { opacity: 1; visibility: visible; transform: none; }
   99%  { visibility: visible; }
-  to   { opacity: 0; visibility: hidden; }
+  to   { opacity: 0; visibility: hidden; transform: translate3d(0, -3px, 0); }
 }
 
 /* Never display:none — that reloads the iframe in some WebKit versions and
@@ -189,11 +216,19 @@
   overscroll-behavior: contain;
 }
 
+/* The calculator is not a pane — it is the document itself, shown and hidden
+   with display — so it needs its own half of the handover on the same clock.
+   Without this it cut in and out while everything around it faded, which is
+   what made it the surface you caught ghosting behind the others. */
+.wrap-in  { animation: paneIn var(--pane-in) var(--pane-ease) var(--pane-in-delay) both; }
+.wrap-out { animation: paneOut var(--pane-out) var(--pane-ease) both; pointer-events: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .tabbar-dock, .pane, .tabbar-btn { transition: none; }
-  .pane-on { animation: none; }
+  .pane-on, .wrap-in { animation: none; }
   /* still needs to end up hidden, just without the fade */
   .pane-off { animation: none; visibility: hidden; opacity: 0; }
+  .wrap-out { animation: none; opacity: 0; }
 }
 
 /* ============================== sessions ==================================
@@ -377,4 +412,133 @@
   .sess-at { font-size: 10.5px; }
   .sess-st { min-width: 56px; }
   .sess-sub { padding-left: 10px; }
+}
+
+/* ========================= the dial, in motion ============================
+   Two kinds of animation live here and they answer different questions.
+
+   The ENTRANCE runs once each time you open the tab. Sessions is mounted for
+   the life of the app so its clock survives switching away, which means mount
+   is not the moment anyone sees it — Sessions.jsx keys the dial on a run
+   counter instead, and remounting restarts everything below.
+
+   The PULSE never stops. It exists because this screen can be completely
+   correct and completely still: at 3am nothing is open, every countdown is
+   hours away, and a static dial gives you no way to tell a live clock from a
+   screenshot. A beat on the marker is the difference.
+
+   Nothing here moves the geometry the readout was measured against. The dial
+   and the readout scale together, so the clearance between the type and the
+   inner ring holds through the whole entrance.
+========================================================================== */
+
+/* The arcs draw themselves on, which needs an animatable length — and a custom
+   property is only animatable once it has been registered with a type.
+
+   Where @property is missing the arc jumps to full length at the midpoint of
+   the animation instead of growing, because unregistered custom properties
+   interpolate discretely. That is a weaker entrance, not a broken dial: the
+   final state is identical either way and the fade still runs. */
+@property --arc-len {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+/* The gap is any number past the circumference; the visible dash is the
+   window's share of the day and --arc-len carries it. In the stylesheet rather
+   than as an attribute because a presentation attribute loses to a stylesheet,
+   so the two would fight — and every arc, tracks included, sets its own length
+   inline, so nothing here ever falls back to the 0px initial value. */
+.sess-arc { stroke-dasharray: var(--arc-len) 9999; }
+
+.sess-dial, .sess-centre { animation: dialIn 0.5s cubic-bezier(.22, .8, .3, 1) both; }
+@keyframes dialIn {
+  from { opacity: 0; transform: scale(0.965); }
+  to   { opacity: 1; transform: none; }
+}
+
+.sess-tracks { animation: sessFade 0.4s ease 0.04s both; }
+.sess-ticks  { animation: sessFade 0.34s ease 0.1s both; }
+.sess-hours  { animation: sessFade 0.34s ease 0.18s both; }
+.sess-marks  { animation: sessFade 0.34s ease 0.3s both; }
+@keyframes sessFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* --i is the window's place in the DAY, not its place in the array, so the
+   ring fills in the order the day runs rather than in source order. */
+.sess-arc:not(.sess-track) {
+  animation: arcDraw 0.62s cubic-bezier(.3, .8, .35, 1)
+             calc(0.1s + var(--i, 0) * 0.075s) both;
+}
+@keyframes arcDraw {
+  from { --arc-len: 0px; opacity: 0.25; }
+  to   { opacity: 1; }
+}
+
+/* A slow breath on whatever is open. Two animations on one element: the draw
+   runs once and the breath repeats, and because the breath is listed second it
+   owns opacity from the moment its delay elapses. Needs .sess-arc as well to
+   out-specify the rule above, which is why this reads heavier than it is. */
+.sess-arc.sess-arc-live {
+  animation:
+    arcDraw 0.62s cubic-bezier(.3, .8, .35, 1) calc(0.1s + var(--i, 0) * 0.075s) both,
+    sessBreath 3.4s ease-in-out 0.9s infinite;
+}
+/* the same breath, same rate, on its bullet in the list — the two halves of
+   the screen should read as one thing rather than two that happen to agree */
+.sess-bul.on { animation: sessBreath 3.4s ease-in-out 0.9s infinite; }
+@keyframes sessBreath {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.72; }
+}
+
+/* The readout arrives last and rises rather than appearing, so the clock reads
+   as settling into the ring the arcs have just drawn. */
+.sess-centre > * { animation: sessRise 0.42s cubic-bezier(.22, .9, .28, 1) both; }
+.sess-centre > :nth-child(1) { animation-delay: 0.2s; }
+.sess-centre > :nth-child(2) { animation-delay: 0.27s; }
+.sess-centre > :nth-child(3) { animation-delay: 0.32s; }
+.sess-centre > :nth-child(4) { animation-delay: 0.37s; }
+@keyframes sessRise {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Now. Parked at midnight in the markup and rotated into place, so opening the
+   tab sweeps it round the day to where you actually are — the one animation
+   that says what this screen is for. Afterwards the same transition carries
+   the per-second creep, which is 0.0042 degrees: far too small to see either
+   way, but it costs nothing and means the marker never steps.
+
+   Sessions.jsx suppresses the transition for the one frame it needs to park
+   the marker, and keeps the angle monotonic so midnight does not wind it
+   backwards through the whole day. */
+.sess-now {
+  transform-box: view-box;
+  transform-origin: 150px 150px;
+  transition: transform 1.05s cubic-bezier(.22, .85, .3, 1);
+}
+
+/* The beat: a second dot under the real one, expanding and fading once a
+   second. No filter on this one, unlike the dot it sits beneath — it runs
+   forever, and a Gaussian blur re-rasterising every frame is not free. */
+.sess-beat {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sessBeat 1s cubic-bezier(.2, .6, .3, 1) infinite;
+}
+@keyframes sessBeat {
+  from    { opacity: 0.5; transform: scale(1); }
+  70%     { opacity: 0;   transform: scale(2.4); }
+  to      { opacity: 0;   transform: scale(2.4); }
+}
+
+/* Every arc still carries its full length inline, so switching all of this off
+   leaves a finished dial rather than an empty ring. */
+@media (prefers-reduced-motion: reduce) {
+  .sess-dial, .sess-centre, .sess-centre > *,
+  .sess-tracks, .sess-ticks, .sess-hours, .sess-marks,
+  .sess-arc, .sess-arc.sess-arc-live, .sess-bul.on { animation: none; }
+  .sess-now { transition: none; }
+  .sess-beat { display: none; }
 }
