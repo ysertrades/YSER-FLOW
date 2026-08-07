@@ -27,6 +27,14 @@ import { useEffect, useRef } from "react";
  * come off a single per-particle depth value, so small dots are dim and slow and
  * large ones are bright and quick. Independent randoms give you a field; one
  * shared random gives you distance.
+ *
+ * THE FIELD MUST SURVIVE A TAB SWITCH. Everything here lives in refs and the
+ * setup effect runs once, on mount. It used to depend on `active`, which meant
+ * every switch tore the whole thing down and rebuilt it: `resize()` saw its
+ * size as changed (the closure's w/h had been reset to 0), so it re-assigned
+ * canvas.width — which clears the canvas — and re-seeded every particle back to
+ * its starting position. The field blanked for a frame and then teleported.
+ * That was the flash.
  * ------------------------------------------------------------------------- */
 
 const COUNT = 34;
@@ -37,6 +45,14 @@ const SPRITE = 64;          // sprite is drawn at 64px and scaled down, never up
    number that decides whether the field reads as points of light or as smudges
    — at 7 the tails were wide enough to be blobs behind the Today card. */
 const HALO = 4.2;
+
+/* Held back until the dial's entrance is over. Both start on the same frame
+   otherwise, and the entrance is the one moment on this screen with real work
+   to do — measured at 6x CPU throttle, starting the canvas alongside it was
+   worth three dropped frames on its own. Long enough to clear the arcs, which
+   are the last thing to finish — the field is fading up over half a second
+   anyway, so nothing is visibly missing while it waits. */
+const START_DELAY = 1100;
 
 /* The original's hash. Keeping it means the field is identical on every open
    rather than reshuffling, which matters here — this sits under a dial you are
@@ -65,7 +81,9 @@ function makeSprite() {
 
 export default function Particles({ active }) {
   const canvasRef = useRef(null);
+  const runRef = useRef({ start: null, stop: null });
 
+  // ---- setup: once, on mount. Never keyed on `active`. --------------------
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
@@ -132,34 +150,50 @@ export default function Particles({ active }) {
       const nw = Math.max(1, rect.width);
       const nh = Math.max(1, rect.height);
       if (nw === w && nh === h) return;
+      /* Rescale what is already there rather than re-seeding. Assigning
+         canvas.width clears the surface, so a re-seed on every resize would
+         blank and teleport the field — which is what a tab switch used to do
+         when this effect was torn down and rebuilt. */
+      const first = w === 0;
+      const sx = first ? 1 : nw / w;
+      const sy = first ? 1 : nh / h;
       w = nw; h = nh;
       canvas.width = Math.floor(w * dpr);
       canvas.height = Math.floor(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      seed();
+      if (first) seed();
+      else particles.forEach((p) => { p.x *= sx; p.y *= sy; });
       draw(false);
     };
 
     const tick = () => { draw(true); raf = requestAnimationFrame(tick); };
     const stop = () => { if (raf) { cancelAnimationFrame(raf); raf = 0; } };
     const start = () => {
-      if (raf || reduced || !active || document.hidden) return;
+      if (raf || reduced || document.hidden) return;
       raf = requestAnimationFrame(tick);
     };
+    runRef.current = { start, stop };
 
     // A background that keeps animating in a backgrounded tab is a battery
     // bug, not a feature.
-    const onVisibility = () => { if (document.hidden) stop(); else start(); };
+    const onVisibility = () => { if (document.hidden) stop(); };
 
     resize();
-    start();
     window.addEventListener("resize", resize);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       stop();
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", onVisibility);
+      runRef.current = { start: null, stop: null };
     };
+  }, []);
+
+  // ---- run: only while the tab is up, and only once it has finished arriving
+  useEffect(() => {
+    if (!active) { if (runRef.current.stop) runRef.current.stop(); return undefined; }
+    const t = setTimeout(() => { if (runRef.current.start) runRef.current.start(); }, START_DELAY);
+    return () => clearTimeout(t);
   }, [active]);
 
   return (

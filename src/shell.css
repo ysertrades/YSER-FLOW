@@ -449,7 +449,10 @@
    final state is identical either way and the fade still runs. */
 @property --arc-len {
   syntax: "<length>";
-  inherits: false;
+  /* Inherited on purpose: it is set on the arc's GROUP, and a glowing arc is
+     three strokes inside that group which all need the same dash length. One
+     animation on the group drives all of them. */
+  inherits: true;
   initial-value: 0px;
 }
 
@@ -460,11 +463,18 @@
    inline, so nothing here ever falls back to the 0px initial value. */
 .sess-arc { stroke-dasharray: var(--arc-len) 9999; }
 
-.sess-dial, .sess-centre { animation: dialIn 0.5s cubic-bezier(.22, .8, .3, 1) both; }
-@keyframes dialIn {
-  from { opacity: 0; transform: scale(0.965); }
-  to   { opacity: 1; transform: none; }
-}
+/* Opacity only. This used to scale from 0.965, and that one property was the
+   single most expensive thing in the entrance: scaling an <svg> re-rasterises
+   its contents every frame, and at 6x CPU throttle it accounted for half the
+   dropped frames on its own. will-change did not rescue it — a promoted layer
+   still re-rasters SVG content as the scale changes.
+
+   Nothing is really lost. 3.5% of scale was the least visible part of the
+   entrance; the arcs drawing themselves on, the readout rising and the marker
+   sweeping round are what make it read as powering up, and all three are
+   still here. An opacity animation Chromium composites on its own. */
+.sess-dial, .sess-centre { animation: dialIn 0.44s ease both; }
+@keyframes dialIn { from { opacity: 0; } to { opacity: 1; } }
 
 .sess-tracks { animation: sessFade 0.4s ease 0.04s both; }
 .sess-ticks  { animation: sessFade 0.34s ease 0.1s both; }
@@ -474,9 +484,9 @@
 
 /* --i is the window's place in the DAY, not its place in the array, so the
    ring fills in the order the day runs rather than in source order. */
-.sess-arc:not(.sess-track) {
-  animation: arcDraw 0.62s cubic-bezier(.3, .8, .35, 1)
-             calc(0.1s + var(--i, 0) * 0.075s) both;
+.sess-arc-g:not(.sess-track-g) {
+  animation: arcDraw 0.5s cubic-bezier(.3, .8, .35, 1)
+             calc(0.08s + var(--i, 0) * 0.085s) both;
 }
 @keyframes arcDraw {
   from { --arc-len: 0px; opacity: 0.25; }
@@ -487,9 +497,9 @@
    runs once and the breath repeats, and because the breath is listed second it
    owns opacity from the moment its delay elapses. Needs .sess-arc as well to
    out-specify the rule above, which is why this reads heavier than it is. */
-.sess-arc.sess-arc-live {
+.sess-arc-g.sess-arc-live {
   animation:
-    arcDraw 0.62s cubic-bezier(.3, .8, .35, 1) calc(0.1s + var(--i, 0) * 0.075s) both,
+    arcDraw 0.5s cubic-bezier(.3, .8, .35, 1) calc(0.08s + var(--i, 0) * 0.085s) both,
     sessBreath 3.4s ease-in-out 0.9s infinite;
 }
 /* the same breath, same rate, on its bullet in the list — the two halves of
@@ -546,7 +556,7 @@
 @media (prefers-reduced-motion: reduce) {
   .sess-dial, .sess-centre, .sess-centre > *,
   .sess-tracks, .sess-ticks, .sess-hours, .sess-marks,
-  .sess-arc, .sess-arc.sess-arc-live, .sess-bul.on { animation: none; }
+  .sess-arc-g, .sess-arc-g.sess-arc-live, .sess-bul.on { animation: none; }
   .sess-now { transition: none; }
   .sess-beat { display: none; }
 }
