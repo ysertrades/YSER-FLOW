@@ -566,8 +566,14 @@
    warnings so they never read as the accent.
 ═══════════════════════════════════════════════════════════════ */
 :root{
-  --ground:#08090C;              /* deep midnight — the pools go on top of it */
-  --ground-2:#08090C;
+  /* The app's ground, to the value. The deck used to sit on its own deeper
+     #08090C, which was a considered colour when this file was a standalone
+     document — but it is a tab in the app now, and the calculator, the dial and
+     the editor all sit on #121212. A deck that steps two levels darker the
+     moment you open it is one surface pretending not to be part of the set.
+     Keep in step with html/body in the app's index.html. */
+  --ground:#121212;
+  --ground-2:#121212;
 
   /* The card is translucent now, not a solid block. 0.55 is the window: any
      more opaque and the blur has nothing to show, any less and the type loses
