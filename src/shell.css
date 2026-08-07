@@ -276,7 +276,18 @@
 .sess-head b { color: rgba(255, 255, 255, 0.82); font-weight: 700; }
 .sess-head i { flex: 1; height: 1px; background: rgba(255, 255, 255, 0.09); }
 
-.sess-dial-wrap { position: relative; width: 300px; height: 300px; margin-bottom: 22px; }
+/* overflow:hidden because the marker is a rotated 300px box now. Nothing it
+   draws ever leaves the dial — the dot stays at radius 104 — but a rotated
+   element's BOUNDING BOX does: at 157 degrees a 300px square measures 424
+   across, and an absolutely positioned descendant contributes that to its
+   ancestor's scrollable area. It put 44px of horizontal scroll on a 320px
+   phone. The SVG used to clip this for free. */
+.sess-dial-wrap {
+  position: relative;
+  width: 300px; height: 300px;
+  margin-bottom: 22px;
+  overflow: hidden;
+}
 .sess-dial { width: 300px; height: 300px; display: block; }
 /* The readout has to live inside the INNER ring, not merely inside the dial —
    its box is inset:0 over the whole 300px square, so nothing about the layout
@@ -552,9 +563,43 @@
    Sessions.jsx suppresses the transition for the one frame it needs to park
    the marker, and keeps the angle monotonic so midnight does not wind it
    backwards through the whole day. */
+/* An HTML layer over the dial, not a group inside it. transform-box and a
+   150px origin are gone with the SVG — this is a 300x300 box, so the default
+   50% 50% origin already IS the dial centre.
+
+   will-change is the reason any of this was moved: it promotes the marker to
+   its own compositor layer, so the rotation is a GPU transform of a texture
+   rather than a repaint of the whole dial. An SVG transform is never
+   composited, which is why the sweep used to stall partway round while the
+   arcs were drawing themselves on over the same main thread. */
 .sess-now {
-  transform-box: view-box;
-  transform-origin: 150px 150px;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+/* Offsets are the viewBox numbers unchanged: 150 - (R_OUT - 10) = 56 down to
+   150 - (R_IN - 13) = 78, and the dot centred on 150 - R_OUT = 46. */
+.sess-now-stem {
+  position: absolute; left: 50%; top: 56px;
+  width: 1.4px; height: 22px; margin-left: -0.7px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.45);
+}
+.sess-now-dot, .sess-now-beat {
+  position: absolute; left: 50%; top: 46px;
+  width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px;
+  border-radius: 50%;
+  background: #fff;
+}
+/* r=7.6 at .22 and r=11 at .12 off a 5.5 core, as spreads: 2.1 and 5.5. */
+.sess-now-dot {
+  box-shadow: 0 0 0 2.1px rgba(255, 255, 255, 0.22),
+              0 0 0 5.5px rgba(255, 255, 255, 0.12);
+}
+.sess-now-beat {
+  opacity: 0.5;
+  animation: sessBeat 1s cubic-bezier(.2, .6, .3, 1) infinite;
 }
 /* Parked at midnight for one frame, with nothing to interpolate from. */
 .sess-now-park { transition: none; }
@@ -573,11 +618,6 @@
 /* The beat: a second dot under the real one, expanding and fading once a
    second. No filter on this one, unlike the dot it sits beneath — it runs
    forever, and a Gaussian blur re-rasterising every frame is not free. */
-.sess-beat {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: sessBeat 1s cubic-bezier(.2, .6, .3, 1) infinite;
-}
 @keyframes sessBeat {
   from    { opacity: 0.5; transform: scale(1); }
   70%     { opacity: 0;   transform: scale(2.4); }
@@ -593,8 +633,9 @@
   .sess-arc, .sess-nm, .sess-st, .sess-at, .sess-bul,
   .sess-state, .sess-left, .sess-sublabel { transition: none; }
   .sess-now-sweep, .sess-now-live { transition: none; }
+  .sess-now-beat { display: none; }
+  .sess-particles { transition: none; }
   .sess-now { transition: none; }
-  .sess-beat { display: none; }
 }
 
 /* The drifting field behind the dial. Outside .sess-scroll, so it holds still
@@ -611,14 +652,38 @@
    screen arrives on it. A second, slower ramp on top meant the field was still
    climbing to full strength half a second after the dial had settled, arriving
    as its own separate event. It rides the pane now, like everything else. */
+/* Fixed, and OUTSIDE the pane. Inside it the canvas inherited the pane's
+   animating opacity, and a canvas is its own compositing layer — so it arrived
+   at full strength for a frame before the group opacity reached it, which is
+   the flash. It also rode the pane's 5px entrance translate, sliding the whole
+   background up under content that was arriving.
+
+   Its own fade instead, on exactly the pane's timing and easing, so it still
+   arrives as part of the same movement rather than as a second event. That was
+   the fault with the previous version of this rule: 0.55s with a 0.1s delay
+   left the field still climbing half a second after the dial had settled.
+
+   z-index 0 puts it above the page ground and below every pane. visibility
+   parks it out of the paint entirely at rest — it is only ever on screen
+   while Sessions is. */
 .sess-particles {
-  position: absolute;
+  position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
   z-index: 0;
   pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--pane-out) var(--pane-ease),
+              visibility 0s linear var(--pane-out);
+}
+.sess-particles.on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--pane-in) var(--pane-ease) var(--pane-in-delay),
+              visibility 0s;
 }
 
 /* Above the field. .sess-scroll had no stacking position of its own, so the

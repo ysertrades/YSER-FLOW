@@ -46,13 +46,18 @@ const SPRITE = 64;          // sprite is drawn at 64px and scaled down, never up
    — at 7 the tails were wide enough to be blobs behind the Today card. */
 const HALO = 4.2;
 
-/* Held back until the dial's entrance is over. Both start on the same frame
-   otherwise, and the entrance is the one moment on this screen with real work
-   to do — measured at 6x CPU throttle, starting the canvas alongside it was
-   worth three dropped frames on its own. Long enough to clear the arcs, which
-   are the last thing to finish. Nothing is visibly missing while it waits: 34
-   dots drifting at a fraction of a pixel per frame look identical stopped. */
-const START_DELAY = 950;
+/* Held back until the dial's entrance is COMPLETELY over — including the
+   marker's sweep, which is the last thing to finish and the most fragile.
+ *
+ * 950 was not enough. Measured on a cold launch at 6x CPU throttle, the canvas
+ * loop starting inside the sweep's tail was the most consistent contributor to
+ * it stalling: switching the field off was the only case that reliably dropped
+ * the stall from ~88ms to ~56ms. Clearing a full-screen canvas and stamping 34
+ * sprites is real main-thread work, and the sweep has no main thread to spare.
+ *
+ * Nothing is visibly missing while it waits: 34 dots drifting at a fraction of
+ * a pixel per frame look identical stopped. */
+const START_DELAY = 1500;
 
 /* The original's hash. Keeping it means the field is identical on every open
    rather than reshuffling, which matters here — this sits under a dial you are

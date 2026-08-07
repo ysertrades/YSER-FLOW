@@ -10,6 +10,12 @@ import { useAutoHideOnScroll, usePrefersReducedMotion } from "./useShellHooks";
    drift apart the two surfaces start overlapping again. */
 const LEAVE_MS = 140;
 
+/* How long the landing tab's entrance needs the main thread to itself, from the
+   moment the intro clears. The dial's sweep is the long pole — see SWEEP_MS in
+   Sessions.jsx — and it is the thing that visibly breaks if anything heavy runs
+   underneath it. */
+const ENTRANCE_MS = 1500;
+
 /**
  * Shell. Holds the tab and renders all four surfaces at once — nothing is
  * ever conditionally unmounted:
@@ -100,20 +106,38 @@ export default function App() {
     return () => { el.removeEventListener("animationend", done); clearTimeout(t); };
   }, []);
 
-  // Both panes mount themselves once the app has gone quiet. Deferring until a
-  // tab is opened meant the first switch paid to parse the whole document —
-  // the guide is 92KB and blocked the main thread for ~500ms, which is most of
-  // what the switch felt like. Idle time is free; the switch is not.
+  /* Both panes mount themselves once the app has gone quiet. Deferring until a
+     tab is opened meant the first switch paid to parse the whole document — the
+     guide is 92KB and blocked the main thread for ~500ms, which is most of what
+     the switch felt like.
+ 
+     But "quiet" has to mean quiet. This used to arm a requestIdleCallback
+     immediately, which meant the browser was free to spend its first idle
+     moment parsing two vendored documents — and the app's first idle moment is
+     exactly when the intro clears and the landing tab plays its entrance.
+     Measured on a cold launch at 6x CPU throttle, that landed as sporadic
+     175-215ms main-thread blocks, and the dial's sweep stopped dead in the
+     middle of them. Which is what "it gets stuck and then jumps" is.
+ 
+     So: nothing until the intro has gone, and then nothing until the entrance
+     has finished. Someone who switches tabs inside that first second and a half
+     pays the parse cost at the switch instead, which is the older behaviour and
+     the better trade. */
   const [preload, setPreload] = useState(false);
   useEffect(() => {
+    if (!booted) return undefined;
     const arm = () => setPreload(true);
-    if (typeof requestIdleCallback === "function") {
-      const id = requestIdleCallback(arm, { timeout: 3500 });
-      return () => cancelIdleCallback(id);
-    }
-    const t = setTimeout(arm, 2200);
-    return () => clearTimeout(t);
-  }, []);
+    let idle;
+    const t = setTimeout(() => {
+      if (typeof requestIdleCallback === "function") {
+        idle = requestIdleCallback(arm, { timeout: 2500 });
+      } else arm();
+    }, ENTRANCE_MS);
+    return () => {
+      clearTimeout(t);
+      if (idle && typeof cancelIdleCallback === "function") cancelIdleCallback(idle);
+    };
+  }, [booted]);
 
   return (
     <>

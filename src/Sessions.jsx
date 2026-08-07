@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Particles from "./Particles";
-import { useEtTick, readDay, fmtCountdown, MARKS } from "./sessions";
+import { useEtTick, readDay, fmtCountdown, MARKS, RING_SESSIONS } from "./sessions";
 
 /* ---------------------------------------------------------------------------
  * Sessions — the trading day as a 24-hour dial.
@@ -88,6 +88,57 @@ function Arc({ r, start, end, stroke, width, glow, live, track, i = 0 }) {
     </g>
   );
 }
+
+/* Built once, at module scope. None of it depends on the time, so re-creating
+   it on every clock tick was ~30 nodes a second of reconciliation for a drawing
+   that never changes. Stable element identity lets React skip the subtree
+   entirely. */
+const DIAL_FURNITURE = (
+  <>
+    {/* hour ticks, heavier every six */}
+    <g className="sess-ticks">
+      {Array.from({ length: 24 }, (_, h) => {
+        const major = h % 6 === 0;
+        const a = ptAt(h * 60, R_OUT + 9);
+        const b = ptAt(h * 60, R_OUT + (major ? 17 : 13));
+        return <line key={h} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
+          stroke={major ? "rgba(255,255,255,.30)" : "rgba(255,255,255,.10)"}
+          strokeWidth={major ? 1.6 : 1} strokeLinecap="round" />;
+      })}
+    </g>
+    <g className="sess-hours">
+      {[[0, "12a"], [360, "6a"], [720, "12p"], [1080, "6p"]].map(([m, label]) => {
+        const p = ptAt(m, R_OUT + 30);
+        return <text key={label} x={p[0]} y={p[1]} fill="rgba(255,255,255,.34)"
+          fontSize="10.5" fontWeight="700" textAnchor="middle"
+          dominantBaseline="central" letterSpacing=".08em"
+          style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{label}</text>;
+      })}
+    </g>
+    <g className="sess-tracks">
+      <Arc track r={R_OUT} start={0} end={1440} stroke="rgba(255,255,255,.055)" width={12} />
+      <Arc track r={R_IN}  start={0} end={1440} stroke="rgba(255,255,255,.04)"  width={7} />
+    </g>
+  </>
+);
+
+/* instants, drawn across both rings — also fixed for all time */
+const DIAL_MARKS = (
+  <g className="sess-marks">
+    {MARKS.map((mk) => {
+      const a = ptAt(mk.minute, R_IN - 7), b = ptAt(mk.minute, R_OUT + 6);
+      return <line key={mk.key} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
+        stroke="rgba(255,255,255,.13)" strokeWidth={1} strokeDasharray="2 3" />;
+    })}
+  </g>
+);
+
+/* The order the day runs the windows in, for the draw-on stagger. Fixed, so it
+   does not want re-sorting inside a render — it used to be an inline
+   [...ring].sort().indexOf(w) evaluated once PER ARC, per tick. */
+const RING_ORDER = RING_SESSIONS.map((w) => w.key)
+  .sort((a, b) => RING_SESSIONS.find((w) => w.key === a).start
+                - RING_SESSIONS.find((w) => w.key === b).start);
 
 function colourFor(w, nextKey, ahead, done) {
   if (w.state === "open") return OPEN;
@@ -201,6 +252,35 @@ export default function Sessions({ active, ready = true, now }) {
 
   const markerAngle = phase === "park" ? 0 : phase === "sweep" ? sweepTo : nowAngle;
 
+  /* The arcs, rebuilt only when a window changes state. Everything they depend
+     on is in this one string, so the tick — which changes only the seconds —
+     reuses the same elements and React skips the subtree.
+
+     This matters more than it looks. The dial is ~17 stroked circles, and it
+     was being reconciled once a second on top of whatever else was running.
+     On a cold launch at 6x CPU throttle that landed on the sweep. */
+  const arcSig = `${closed}|${nextKey}|${ring.map((w) => w.state).join(",")}` +
+                 `|${sub.map((w) => w.state).join(",")}`;
+  const arcs = useMemo(() => (
+    <>
+      {ring.map((w) => (
+        <Arc key={w.key} r={R_OUT} start={w.start} end={w.end} width={12}
+          i={RING_ORDER.indexOf(w.key)}
+          stroke={colourFor(w, nextKey, "rgba(255,255,255,.22)", "rgba(255,255,255,.08)")}
+          glow={w.state === "open" || w.key === nextKey}
+          live={w.state === "open"} />
+      ))}
+      {sub.map((w, n) => (
+        <Arc key={w.key} r={R_IN} start={w.start} end={w.end} width={7}
+          i={ring.length + n}
+          stroke={colourFor(w, nextKey, "rgba(255,255,255,.18)", "rgba(255,255,255,.07)")}
+          glow={w.state === "open" || w.key === nextKey}
+          live={w.state === "open"} />
+      ))}
+    </>
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [arcSig, run]);
+
   /* It rides the same .pane machinery the editor and guide use, so switching to
      it crossfades exactly like every other tab instead of cutting. That also
      keeps it off the document flow, so the calculator's scroll position is
@@ -224,10 +304,16 @@ export default function Sessions({ active, ready = true, now }) {
   });
 
   return (
+    <>
+    {/* OUTSIDE the pane, deliberately, and this is what stops it flashing.
+        Inside, the canvas inherited the pane's animating opacity — and a canvas
+        is its own compositing layer, so it arrives at full strength for a frame
+        before the group opacity is applied to it. It also rode the pane's 5px
+        entrance translate, which slid the whole background up under content
+        that was arriving. Its own layer, its own fade, on exactly the pane's
+        timing so it still arrives as part of the same movement. */}
+    <Particles active={shown} />
     <div className={`pane ${paneState}`} aria-hidden={!active}>
-      {/* Behind everything, and outside .sess-scroll so it stays put while the
-          list scrolls over it. */}
-      <Particles active={shown} />
       <div className="sess-scroll">
         <div className="sess-wrap">
           <div className="sess-head">
@@ -241,90 +327,53 @@ export default function Sessions({ active, ready = true, now }) {
                  aria-label={closed ? "Market closed for the weekend"
                    : primary ? `${primary.name}, ${dur(primary.remaining)} remaining`
                    : "No session open"}>
-              {/* hour ticks, heavier every six */}
-              <g className="sess-ticks">
-                {Array.from({ length: 24 }, (_, h) => {
-                  const major = h % 6 === 0;
-                  const a = ptAt(h * 60, R_OUT + 9);
-                  const b = ptAt(h * 60, R_OUT + (major ? 17 : 13));
-                  return <line key={h} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
-                    stroke={major ? "rgba(255,255,255,.30)" : "rgba(255,255,255,.10)"}
-                    strokeWidth={major ? 1.6 : 1} strokeLinecap="round" />;
-                })}
-              </g>
+              {/* Hour ticks, labels and the bare tracks are the same drawing at
+                  every instant of every day, so they are built once at module
+                  scope. Stable element identity is what lets React skip the
+                  whole subtree on the clock tick instead of reconciling ~30
+                  nodes a second. */}
+              {DIAL_FURNITURE}
 
-              <g className="sess-hours">
-                {[[0, "12a"], [360, "6a"], [720, "12p"], [1080, "6p"]].map(([m, label]) => {
-                  const p = ptAt(m, R_OUT + 30);
-                  return <text key={label} x={p[0]} y={p[1]} fill="rgba(255,255,255,.34)"
-                    fontSize="10.5" fontWeight="700" textAnchor="middle"
-                    dominantBaseline="central" letterSpacing=".08em"
-                    style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>{label}</text>;
-                })}
-              </g>
+              {/* The arcs redraw only when a window CHANGES STATE — a few times
+                  a day — rather than once a second with everything else. The
+                  clock tick was re-rendering the entire dial every second, and
+                  at 6x CPU throttle that landed squarely on top of the sweep. */}
+              {arcs}
 
-              {/* the tracks */}
-              <g className="sess-tracks">
-                <Arc track r={R_OUT} start={0} end={1440} stroke="rgba(255,255,255,.055)" width={12} />
-                <Arc track r={R_IN}  start={0} end={1440} stroke="rgba(255,255,255,.04)"  width={7} />
-              </g>
-
-              {/* Arcs arrive in the order the day runs them, not in array order,
-                  so the ring fills the way time does. */}
-              {ring.map((w) => (
-                <Arc key={w.key} r={R_OUT} start={w.start} end={w.end} width={12}
-                  i={[...ring].sort((a, b) => a.start - b.start).indexOf(w)}
-                  stroke={colourFor(w, nextKey, "rgba(255,255,255,.22)", "rgba(255,255,255,.08)")}
-                  glow={w.state === "open" || w.key === nextKey}
-                  live={w.state === "open"} />
-              ))}
-              {sub.map((w, n) => (
-                <Arc key={w.key} r={R_IN} start={w.start} end={w.end} width={7}
-                  i={ring.length + n}
-                  stroke={colourFor(w, nextKey, "rgba(255,255,255,.18)", "rgba(255,255,255,.07)")}
-                  glow={w.state === "open" || w.key === nextKey}
-                  live={w.state === "open"} />
-              ))}
-
-              {/* instants, drawn across both rings */}
-              <g className="sess-marks">
-                {MARKS.map((mk) => {
-                  const a = ptAt(mk.minute, R_IN - 7), b = ptAt(mk.minute, R_OUT + 6);
-                  return <line key={mk.key} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]}
-                    stroke="rgba(255,255,255,.13)" strokeWidth={1} strokeDasharray="2 3" />;
-                })}
-              </g>
-
-              {/* Now — a stub outside the inner ring, not a hand through the
-                  middle, which would cut straight across the readout.
-
-                  Drawn parked at midnight and rotated into place. On opening it
-                  sweeps from 12a round to the current time, which is the one
-                  animation that says what this screen is for: the day so far.
-                  After that the same transition just smooths the per-second
-                  creep, which is 0.0042° and would otherwise be a step. */}
-              {!closed && (
-                <g
-                  className={`sess-now sess-now-${phase}`}
-                  style={{ transform: `rotate(${markerAngle}deg)` }}
-                >
-                  <line
-                    x1={CX} y1={CY - (R_IN - 13)} x2={CX} y2={CY - (R_OUT - 10)}
-                    stroke="rgba(255,255,255,.45)" strokeWidth={1.4} strokeLinecap="round"
-                  />
-                  {/* the beat: one pulse a second, so the dial has a pulse even
-                      when every countdown on screen is hours away */}
-                  <circle className="sess-beat" cx={CX} cy={CY - R_OUT} r={5.5} fill="#fff" />
-                  {/* the dot's halo, layered rather than blurred — same reason
-                      as the arcs. This one sits under a marker that rotates for
-                      a full second on every opening, so a filter here was being
-                      re-rasterised for every frame of the sweep. */}
-                  <circle cx={CX} cy={CY - R_OUT} r={11} fill="#fff" opacity={0.12} />
-                  <circle cx={CX} cy={CY - R_OUT} r={7.6} fill="#fff" opacity={0.22} />
-                  <circle cx={CX} cy={CY - R_OUT} r={5.5} fill="#fff" />
-                </g>
-              )}
+              {DIAL_MARKS}
             </svg>
+
+            {/* Now — a stub outside the inner ring, not a hand through the
+                middle, which would cut straight across the readout.
+
+                HTML, not SVG, and that is the whole point. An SVG transform is
+                not composited: every frame of the sweep repainted the entire
+                dial, at the same moment the arcs were repainting it too for
+                their draw-on. The two competed for the main thread and the
+                marker lost — it stalled partway round the morning and then
+                jumped to the current time when the thread came free. Exactly
+                one property moves here now, on an element the compositor owns,
+                so nothing on the main thread can starve it.
+
+                The dial is a fixed 300px box matching the 300-unit viewBox, so
+                these offsets are the viewBox numbers unchanged: the dot centre
+                sits at 150 - R_OUT = 46 from the top, the stem spans
+                150 - (R_OUT - 10) to 150 - (R_IN - 13). */}
+            {!closed && (
+              <div
+                className={`sess-now sess-now-${phase}`}
+                style={{ transform: `rotate(${markerAngle}deg)` }}
+                aria-hidden="true"
+              >
+                <span className="sess-now-stem" />
+                {/* the beat: one pulse a second, so the dial has a pulse even
+                    when every countdown on screen is hours away */}
+                <span className="sess-now-beat" />
+                {/* the halo is two box-shadow rings rather than a blur, for the
+                    same reason the arcs' is two strokes */}
+                <span className="sess-now-dot" />
+              </div>
+            )}
 
             <div className="sess-centre">
               {closed ? (
@@ -385,5 +434,6 @@ export default function Sessions({ active, ready = true, now }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
