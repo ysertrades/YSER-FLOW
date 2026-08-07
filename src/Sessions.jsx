@@ -32,25 +32,46 @@ const ptAt = (m, r) => {
 };
 
 /* An arc as a dash on a circle rather than a hand-built path: the visible dash
-   is the window's share of the day, and the offset is where it starts. One line
-   of maths instead of an arc-flag puzzle. */
+ * is the window's share of the day, and the offset is where it starts. One line
+ * of maths instead of an arc-flag puzzle.
+ *
+ * Every arc is a GROUP, even when it is a single stroke. The group is what
+ * animates: it carries --arc-len (which every circle inside reads for its dash
+ * length), the stagger index, the draw-on and the breath. One animation drives
+ * the whole arc however many strokes it is made of.
+ *
+ * A glowing arc is three strokes, because the glow used to be an SVG Gaussian
+ * blur and that was the most expensive thing on the screen. A filter is
+ * re-rasterised on every frame its input changes — which meant every frame of
+ * the draw-on, the sweep, the beat and the breath, all of which change
+ * something underneath it. Two wider strokes at low alpha stand in for the
+ * blur's falloff and cost what any other stroke costs.
+ *
+ * Two, not one: a single wide stroke has a hard edge where a blur has a
+ * gradient, and at these alphas you can see it. The second layer was measured
+ * at 6x CPU throttle and came out inside the run-to-run noise, so the softer
+ * version is simply free. There is no filter left anywhere in the dial. */
 function Arc({ r, start, end, stroke, width, glow, live, track, i = 0 }) {
   const C = 2 * Math.PI * r;
   const len = ((end - start) / 1440) * C;
+  const geom = {
+    cx: CX, cy: CY, r, fill: "none",
+    strokeLinecap: "round",
+    strokeDashoffset: -((start / 1440) * C),
+    transform: `rotate(-90 ${CX} ${CY})`,
+  };
   return (
-    <circle
-      className={`sess-arc${track ? " sess-track" : ""}${live ? " sess-arc-live" : ""}`}
-      /* The dash length is a custom property rather than an attribute so the
-         entrance can animate it — see --arc-len in shell.css. Every arc sets
-         it, tracks included, or the stylesheet's 0px initial value would leave
-         the ring blank. */
+    <g
+      className={`sess-arc-g${track ? " sess-track-g" : ""}${live ? " sess-arc-live" : ""}`}
+      /* --arc-len is inherited (see @property in shell.css) so setting it here
+         reaches every stroke in the group. Tracks set it too, or the
+         stylesheet's 0px initial value would leave the ring blank. */
       style={{ "--arc-len": `${len}px`, "--i": i }}
-      cx={CX} cy={CY} r={r} fill="none"
-      stroke={stroke} strokeWidth={width} strokeLinecap="round"
-      strokeDashoffset={-((start / 1440) * C)}
-      transform={`rotate(-90 ${CX} ${CY})`}
-      filter={glow ? "url(#sessGlow)" : undefined}
-    />
+    >
+      {glow && <circle className="sess-arc" {...geom} stroke={stroke} strokeWidth={width + 15} opacity={0.07} />}
+      {glow && <circle className="sess-arc" {...geom} stroke={stroke} strokeWidth={width + 7}  opacity={0.13} />}
+      <circle className="sess-arc" {...geom} stroke={stroke} strokeWidth={width} />
+    </g>
   );
 }
 
@@ -177,13 +198,6 @@ export default function Sessions({ active, ready = true, now }) {
                  aria-label={closed ? "Market closed for the weekend"
                    : primary ? `${primary.name}, ${dur(primary.remaining)} remaining`
                    : "No session open"}>
-              <defs>
-                <filter id="sessGlow" x="-60%" y="-60%" width="220%" height="220%">
-                  <feGaussianBlur stdDeviation="4" result="b" />
-                  <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
-              </defs>
-
               {/* hour ticks, heavier every six */}
               <g className="sess-ticks">
                 {Array.from({ length: 24 }, (_, h) => {
@@ -261,7 +275,13 @@ export default function Sessions({ active, ready = true, now }) {
                   {/* the beat: one pulse a second, so the dial has a pulse even
                       when every countdown on screen is hours away */}
                   <circle className="sess-beat" cx={CX} cy={CY - R_OUT} r={5.5} fill="#fff" />
-                  <circle cx={CX} cy={CY - R_OUT} r={5.5} fill="#fff" filter="url(#sessGlow)" />
+                  {/* the dot's halo, layered rather than blurred — same reason
+                      as the arcs. This one sits under a marker that rotates for
+                      a full second on every opening, so a filter here was being
+                      re-rasterised for every frame of the sweep. */}
+                  <circle cx={CX} cy={CY - R_OUT} r={11} fill="#fff" opacity={0.12} />
+                  <circle cx={CX} cy={CY - R_OUT} r={7.6} fill="#fff" opacity={0.22} />
+                  <circle cx={CX} cy={CY - R_OUT} r={5.5} fill="#fff" />
                 </g>
               )}
             </svg>
