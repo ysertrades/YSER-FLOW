@@ -50,9 +50,9 @@ const HALO = 4.2;
    otherwise, and the entrance is the one moment on this screen with real work
    to do — measured at 6x CPU throttle, starting the canvas alongside it was
    worth three dropped frames on its own. Long enough to clear the arcs, which
-   are the last thing to finish — the field is fading up over half a second
-   anyway, so nothing is visibly missing while it waits. */
-const START_DELAY = 1100;
+   are the last thing to finish. Nothing is visibly missing while it waits: 34
+   dots drifting at a fraction of a pixel per frame look identical stopped. */
+const START_DELAY = 950;
 
 /* The original's hash. Keeping it means the field is identical on every open
    rather than reshuffling, which matters here — this sits under a dial you are

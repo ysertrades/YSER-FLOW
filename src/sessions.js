@@ -107,7 +107,7 @@ export const RING_SESSIONS = [
   { key: "asia",   name: "Asia Range",      start: 1200, end: 1440, at: "8:00 PM" },
   { key: "london", name: "London Killzone", start: 120,  end: 300,  at: "2:00 AM" },
   { key: "ny",     name: "NY Killzone",     start: 570,  end: 660,  at: "9:30 AM" },
-  { key: "pm",     name: "PM Session",      start: 900,  end: 960,  at: "3:00 PM" },
+  { key: "pm",     name: "PM Session",      start: 810,  end: 960,  at: "1:30 PM" },
 ];
 
 export const SUB_WINDOWS = [
