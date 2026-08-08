@@ -675,6 +675,13 @@ body{
 .field{
   position:fixed; inset:0; z-index:0;
   display:block; pointer-events:none;
+  /* The layer is permanent. Without this the compositor is free to promote
+     this canvas at the same instant it promotes the slide that is fading, and
+     placing two brand-new layers against each other is how the field ends up
+     drawn over the card for a frame. A layer that already exists cannot be
+     mis-ordered on creation. */
+  transform:translateZ(0);
+  will-change:transform;
 }
 
 .deck{position:relative; flex:1 1 auto; min-height:0; z-index:1;}
@@ -698,8 +705,24 @@ body{
 /* --nav-clear is the pill's footprint. It is scroll padding, not a reserved
    band: content passes under the pill the whole way down and only comes to
    rest clear of it at the very end of the scroll. */
+/* z-index:0 looks like a no-op and is the reason the field stays behind the
+   card while a slide changes.
+
+   Without it a slide is a positioned element with z-index:auto, which has NO
+   stacking context of its own — its descendants paint in the deck's. The
+   moment slideFade starts, opacity drops below 1 and a stacking context comes
+   into existence around all of them; when it finishes, that context is thrown
+   away again. Everything inside is re-parented in the paint order twice per
+   slide change, and a fixed, composited canvas underneath has to be placed
+   against it both times. That is the frame where the dots come to the front.
+
+   Declaring z-index:0 gives the slide that stacking context permanently, so
+   the animation changes opacity and nothing else. Deliberately z-index and NOT
+   isolation:isolate, which would also do it: isolation establishes a BACKDROP
+   ROOT, and the panel's backdrop-filter inside one has nothing left to sample
+   — the glass would stop blurring the field for good. */
 .slide{
-  position:absolute; inset:0;
+  position:absolute; inset:0; z-index:0;
   display:block; overflow-y:auto; overflow-x:hidden;
   padding:20px 16px var(--nav-clear);
   -webkit-overflow-scrolling:touch;
@@ -2127,6 +2150,44 @@ if(document.fonts && document.fonts.ready){
 
   var raf = 0, w = 0, h = 0, particles = [], painted = false;
 
+  /* ── Why the field watches the slide's opacity ──────────────────────────
+     A slide fades in over a field that does not fade with it, and the panel is
+     only rgba(0,0,0,.2) — so while the card is half there you see the field
+     RAW, unblurred and undimmed, at a strength the finished card never shows.
+     Measured inside the panel, the light the field puts on the card:
+
+         slide opacity  1.00   peak 34      ← at rest, behind glass
+                        0.75   peak 35
+                        0.50   peak 39
+                        0.25   peak 42      ← brightest when the card is thinnest
+
+     Backwards. The dots are hardest to ignore exactly when the card is least
+     able to hold them, which is what "they jump in front of the slide card and
+     go back" is. It gets worse in WebKit, where an ancestor below opacity 1
+     establishes a backdrop root and the panel's blur stops sampling anything
+     at all for the length of the fade.
+
+     So the field dims with the card, the same way it already dims with the
+     pane on the Sessions tab. Not to zero, though: the slide is not arriving
+     from nothing the way a tab is — there is always a slide on screen, so
+     taking the field to zero and back would be a blink of the whole
+     background, which is worse than the fault. FLOOR is how far down it is
+     allowed to go, and it is set from the numbers above: the raw term is
+     (1 - opacity) x FIELD, so holding the field at just over half at the
+     thinnest point puts the leak under its own resting value with room spare,
+     while the dip itself is 200ms of a field whose dots are already at alpha
+     0.07-0.20 on near-black. */
+  var FLOOR = 0.55;
+  var slideEl = null;
+  function surfaceAlpha(){
+    if(!slideEl || !slideEl.isConnected || !slideEl.classList.contains('on'))
+      slideEl = document.querySelector('.slide.on');
+    if(!slideEl) return 1;
+    var o = parseFloat(getComputedStyle(slideEl).opacity);
+    if(!isFinite(o)) o = 1;
+    return FLOOR + (1 - FLOOR) * o;
+  }
+
   function seed(){
     particles = [];
     for(var i=0;i<COUNT;i++){
@@ -2146,7 +2207,7 @@ if(document.fonts && document.fonts.ready){
   }
 
   function draw(move){
-    var i, p;
+    var i, p, fade = surfaceAlpha();
     if(painted){
       for(i=0;i<particles.length;i++){
         p = particles[i];
@@ -2164,7 +2225,7 @@ if(document.fonts && document.fonts.ready){
         if(p.y < -m) p.y = h + m; else if(p.y > h + m) p.y = -m;
       }
       var d = p.size * HALO;
-      ctx.globalAlpha = p.alpha;
+      ctx.globalAlpha = p.alpha * fade;
       ctx.drawImage(sprite, p.x - d/2, p.y - d/2, d, d);
       p.dx = p.x; p.dy = p.y;
     }
