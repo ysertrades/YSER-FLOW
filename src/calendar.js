@@ -54,22 +54,30 @@ const META = (typeof document !== "undefined"
 export const CAL_URL = META || SAME_ORIGIN;
 export const CAL_CONFIGURED = Boolean(META);
 
-/* THE WEEK AFTER, FETCHED TOO, AND ALLOWED TO BE MISSING.
+/* A SECOND FILE, OFF BY DEFAULT.
  *
- * The trading week runs Sunday 6 PM to Sunday 6 PM; the feed's file runs
- * Sunday midnight to Saturday midnight. Those do not line up, and the gap sits
- * exactly on the evening the new week is supposed to appear. If FF ever rolls
- * its file late — an hour after our window has already advanced is enough —
- * Sunday evening would show an empty week with no way to tell that from a
- * genuinely quiet one.
+ * This shipped pointing at a build-time calendar-next.json, as a hedge against
+ * the feed rolling its week over late. The runner then answered the question
+ * this could not be tested against locally: ff_calendar_nextweek.json is a
+ * 404, so there was never a second file to ship and the client was asking for
+ * one every sixty seconds forever.
  *
- * So the next week's file is fetched as well and merged in. Every event lands
- * in the same pool and weekAhead() decides what is in range, which means the
- * two files never need to be told apart. It is best-effort by design: a 404
- * here is silence, not a failure, because the primary file covers the normal
- * case entirely on its own. */
-const SAME_ORIGIN_NEXT = "calendar-next.json";
-export const CAL_URL_NEXT = CAL_CONFIGURED ? "" : SAME_ORIGIN_NEXT;
+ * The hedge is not needed either way. The feed's week begins at Sunday
+ * MIDNIGHT and the trading week below does not open until Sunday 6 PM ET, so
+ * the file has turned over eighteen hours before anything is due to come out
+ * of it.
+ *
+ * The plumbing stays because it costs one line and it is how a Worker — or any
+ * source that does publish a second week — would be wired in:
+ *
+ *     <meta name="cal-feed-next" content="https://…">
+ *
+ * Unset, nothing is requested. Whatever it names is merged into the same pool
+ * as the primary and weekAhead() decides what is in range, so the two never
+ * need to be told apart. It is best-effort: a failure there is silence, not a
+ * red dot, because the primary covers the normal case on its own. */
+export const CAL_URL_NEXT = (typeof document !== "undefined"
+  && document.querySelector('meta[name="cal-feed-next"]')?.content) || "";
 
 /* NOBODY GIVES UP ANY MORE. The give-up existed for probing a foreign host
    that might never be allowed through, where retrying every twenty seconds
