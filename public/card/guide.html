@@ -7,6 +7,13 @@
 <style>*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0}</style>
 </head>
 <body>
+<!-- The drifting field. This is the same background the app's Sessions tab
+     carries, and it is here for a reason that is easy to miss: the panels are
+     translucent black over a flat ground, and backdrop-filter over a flat
+     ground does NOTHING. With nothing behind them to blur, "glass" cards are
+     just dark boxes. The dots are what the blur has to work on — they are what
+     makes the same CSS read as glass here as it does there. -->
+<canvas class="field" id="field" aria-hidden="true" role="presentation"></canvas>
 <!-- Where the card's edge used to say "this is one slide of several", a hairline
      across the top says it instead. It is the only chrome above the fold. -->
 <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
@@ -659,6 +666,15 @@ body{
   -webkit-font-smoothing:antialiased; overflow:hidden;
   height:100vh; height:100dvh;
   display:flex; flex-direction:column;
+}
+
+/* Behind everything, and transparent — it ADDS to the ground, it does not
+   replace it. Painting its own backdrop would put a second opaque layer over
+   var(--ground), which is the separate-looking wash this file spent a round
+   getting rid of. */
+.field{
+  position:fixed; inset:0; z-index:0;
+  display:block; pointer-events:none;
 }
 
 .deck{position:relative; flex:1 1 auto; min-height:0; z-index:1;}
@@ -2045,6 +2061,152 @@ repaintAll();
 if(document.fonts && document.fonts.ready){
   document.fonts.ready.then(repaintAll).catch(function(){});
 }
+})();
+</script>
+
+
+<!-- ═══════════════════════ THE FIELD ═══════════════════════
+     A port of the app's Particles component, kept deliberately literal: every
+     constant, the seeded hash, the sprite's gradient stops and the wrap margin
+     are the same numbers. They have to be. The deck sits behind the same tab
+     switcher as the dial, on the same ground, under the same glass — if the
+     field drifted at a different size or speed here you would see the seam
+     every time you crossed between them.
+
+     Three things about the way it is drawn are load-bearing:
+
+       · The canvas is TRANSPARENT and never changes opacity. A canvas is its
+         own compositing layer; fading one over a surface that is also fading
+         is how it ends up painted at full strength for a frame.
+
+       · Dots are ONE 64px sprite, stamped with drawImage. A soft-edged dot
+         wants a radial gradient, and building thirty-four of them per frame is
+         the expensive way to get one.
+
+       · Clearing is per-dot, not full-surface — ~34 small rects instead of a
+         megapixel wipe. Every clear happens before any draw, or two dots that
+         overlap erase each other.
+
+     It does not stop while the document is showing. A background that freezes
+     the moment you look away is a background you notice. -->
+<script>
+(function(){
+  var canvas = document.getElementById('field');
+  if(!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  if(!ctx) return;
+
+  var COUNT = 34;
+  var MIN_SIZE = 0.8, MAX_SIZE = 1.9;
+  var SPRITE = 64;      /* drawn at 64 and scaled down, never up */
+  var HALO = 4.2;       /* how far past the dot the soft tail reaches */
+
+  /* Keeping the original hash means the field is identical on every open
+     rather than reshuffling. This sits under text you are reading. */
+  function seeded(n){ return Math.abs(Math.sin(n*9999.123 + 78.233) * 43758.5453) % 1; }
+
+  var sprite = document.createElement('canvas');
+  sprite.width = sprite.height = SPRITE;
+  (function(){
+    var g = sprite.getContext('2d'), r = SPRITE/2;
+    var grad = g.createRadialGradient(r,r,0,r,r,r);
+    grad.addColorStop(0,   'rgba(255,255,255,1)');
+    grad.addColorStop(0.22,'rgba(255,255,255,0.85)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.16)');
+    grad.addColorStop(1,   'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(r,r,r,0,Math.PI*2); g.fill();
+  })();
+
+  var reduced = window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* Capped at 2 rather than taken from the device: at DPR 3 this is a ~3.6
+     megapixel surface, and these are soft dots with no edge a third pixel
+     could sharpen. */
+  var dpr = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+
+  var raf = 0, w = 0, h = 0, particles = [], painted = false;
+
+  function seed(){
+    particles = [];
+    for(var i=0;i<COUNT;i++){
+      var depth = seeded(i + 5.5);              /* 0 far, 1 near */
+      var angle = seeded(i + 4.9) * Math.PI * 2;
+      var speed = 0.05 + depth * 0.16;
+      particles.push({
+        x: seeded(i + 1.3) * w,
+        y: seeded(i + 2.7) * h,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: MIN_SIZE + depth * (MAX_SIZE - MIN_SIZE),
+        alpha: 0.07 + depth * 0.13,
+        dx: 0, dy: 0                            /* last drawn, for the dirty rect */
+      });
+    }
+  }
+
+  function draw(move){
+    var i, p;
+    if(painted){
+      for(i=0;i<particles.length;i++){
+        p = particles[i];
+        var box = p.size * HALO + 4;            /* + antialiasing slack */
+        ctx.clearRect(p.dx - box/2, p.dy - box/2, box, box);
+      }
+      painted = false;
+    }
+    for(i=0;i<particles.length;i++){
+      p = particles[i];
+      if(move){
+        p.x += p.vx; p.y += p.vy;
+        var m = p.size * HALO;                  /* wrap allowing for the tail */
+        if(p.x < -m) p.x = w + m; else if(p.x > w + m) p.x = -m;
+        if(p.y < -m) p.y = h + m; else if(p.y > h + m) p.y = -m;
+      }
+      var d = p.size * HALO;
+      ctx.globalAlpha = p.alpha;
+      ctx.drawImage(sprite, p.x - d/2, p.y - d/2, d, d);
+      p.dx = p.x; p.dy = p.y;
+    }
+    ctx.globalAlpha = 1;
+    painted = true;
+  }
+
+  function resize(){
+    var rect = canvas.getBoundingClientRect();
+    var nw = Math.max(1, rect.width), nh = Math.max(1, rect.height);
+    if(nw === w && nh === h) return;
+    /* Rescale what is already there rather than re-seeding: assigning
+       canvas.width clears the surface, so re-seeding on a resize would blank
+       the field and teleport it. On iOS the address bar alone fires this. */
+    var first = w === 0;
+    var sx = first ? 1 : nw/w, sy = first ? 1 : nh/h;
+    w = nw; h = nh;
+    canvas.width = Math.floor(w*dpr);
+    canvas.height = Math.floor(h*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    if(first) seed();
+    else for(var i=0;i<particles.length;i++){ particles[i].x *= sx; particles[i].y *= sy; }
+    painted = false;                            /* the resize already cleared it */
+    draw(false);
+  }
+
+  function loop(){ draw(true); raf = requestAnimationFrame(loop); }
+  function kick(){ if(raf || reduced || document.hidden) return; raf = requestAnimationFrame(loop); }
+  function stop(){ if(raf){ cancelAnimationFrame(raf); raf = 0; } }
+
+  /* Coming back has to work from every direction a browser offers, because
+     they do not agree on which one fires: backgrounding gives you
+     visibilitychange, the back/forward cache gives you pageshow, and switching
+     apps on iOS can give you nothing but focus. Miss the one your browser used
+     and the field is simply stopped. */
+  document.addEventListener('visibilitychange', function(){ if(document.hidden) stop(); else kick(); });
+  window.addEventListener('pageshow', kick);
+  window.addEventListener('focus', kick);
+  window.addEventListener('resize', resize);
+
+  resize();
+  kick();
 })();
 </script>
 
