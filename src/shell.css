@@ -357,6 +357,42 @@
   white-space: nowrap;
 }
 
+/* ---------------------------------------------------------------------------
+   The Today card's tilt. See useTilt.js for the behaviour; this is only the
+   projection and the two speeds.
+
+   PERSPECTIVE LIVES ON THE WRAPPER. On the card itself it would make the card
+   its own vanishing point and the tilt would flatten into a skew — depth comes
+   from the projection belonging to the thing the card sits in. 900px is close
+   enough to read as real and far enough that the far edge does not stretch.
+
+   NO BOX-SHADOW, at rest or lifted. The card is .glass, and .glass carries no
+   shadow anywhere in this app — glassshell asserts it against the guide's card.
+   A drop shadow would not do anything on this ground anyway: black under a dark
+   card on #121212 is invisible. The raised cue is the hairline coming up
+   instead, which is the language the rest of the app already speaks.
+
+   TWO SPEEDS, and the slow one is the point. Following the pointer wants to be
+   nearly immediate or the card lags your hand; letting go wants to be long and
+   soft, so the card settles rather than snapping flat. Same transition
+   property, swapped by a class the hook adds while the gesture is live. */
+.sess-tilt { width: 100%; perspective: 900px; }
+.sess-tilt .sess-block {
+  transform-style: preserve-3d;
+  transition: transform 620ms cubic-bezier(.16, 1, .3, 1),
+              border-color 380ms ease;
+}
+/* Two classes deep, so it outranks the rule above without !important. */
+.sess-tilt .sess-block-live {
+  transition: transform 110ms cubic-bezier(.33, 1, .68, 1),
+              border-color 380ms ease;
+  border-color: rgba(176, 176, 176, 0.2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sess-tilt { perspective: none; }
+  .sess-tilt .sess-block { transition: none; }
+}
+
 .sess-block { width: 100%; padding: 14px 16px 6px; margin-bottom: 12px; }
 .sess-blabel {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Particles from "./Particles";
 import { useEtTick, readDay, fmtCountdown, MARKS, RING_SESSIONS } from "./sessions";
+import useTilt from "./useTilt";
 
 /* ---------------------------------------------------------------------------
  * Sessions — the trading day as a 24-hour dial.
@@ -292,6 +293,12 @@ export default function Sessions({ active, ready = true, now }) {
   if (active) opened.current = true;
   const paneState = active ? "pane-on" : opened.current ? "pane-off" : "pane-hidden";
 
+  /* The Today card leans toward the pointer, or toward your thumb. The hook
+     writes the angle straight to the node — nothing here re-renders while it
+     moves, which matters because a render of this component is a rebuild of the
+     whole dial. */
+  const { wrapRef: tiltWrap, cardRef: tiltCard } = useTilt();
+
   const ampm = d.hours < 12 ? "AM" : "PM";
   let hh = d.hours % 12; if (hh === 0) hh = 12;
   const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.day];
@@ -434,11 +441,17 @@ export default function Sessions({ active, ready = true, now }) {
             </div>
           </div>
 
-          <div className="sess-block glass">
-            <div className="sess-blabel">Today</div>
-            {listed.map(({ w, sub: isSub }) => (
-              <Row key={w.key} w={w} nextKey={nextKey} closed={closed} sub={isSub} />
-            ))}
+          {/* The wrapper exists only to hold the perspective. Putting it on the
+              card itself would make the card its own vanishing point, so the
+              tilt would be a flat skew — the depth comes from the projection
+              belonging to the thing the card sits IN. */}
+          <div className="sess-tilt" ref={tiltWrap}>
+            <div className="sess-block glass" ref={tiltCard}>
+              <div className="sess-blabel">Today</div>
+              {listed.map(({ w, sub: isSub }) => (
+                <Row key={w.key} w={w} nextKey={nextKey} closed={closed} sub={isSub} />
+              ))}
+            </div>
           </div>
 
           {/* the same signature the calculator carries at the foot of its scroll */}
