@@ -3,6 +3,7 @@ import Calculator from "./Calculator";
 import Sessions from "./Sessions";
 import StaticPane from "./StaticPane";
 import TabBar from "./TabBar";
+import Callout from "./Callout";
 import { useAutoHideOnScroll, usePrefersReducedMotion } from "./useShellHooks";
 
 /* How long the calculator takes to leave, in ms. Must match --pane-out in
@@ -174,6 +175,13 @@ export default function App() {
       {/* Hidden on the guide tab, using the same slide-away the bar already
           performs on scroll. Reading is the one thing here that deserves the
           whole screen. */}
+      {/* The first-run pointer at the editor. It sits with the tab bar because
+          it is anchored to a button in it, and it hides with the bar for the
+          same reason — a bubble pointing at something that has slid off screen
+          is a bubble pointing at nothing. */}
+      {!barHidden && tab !== "guide" && (
+        <Callout ready={booted} tab={tab} onGo={goTab} anchor="card" />
+      )}
       <TabBar tab={tab} onChange={goTab} hidden={barHidden || tab === "guide"} />
     </>
   );

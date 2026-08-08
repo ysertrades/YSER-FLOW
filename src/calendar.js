@@ -114,6 +114,44 @@ export function parseCalendar(raw) {
     .sort((a, b) => a.at - b.at);
 }
 
+/* A calendar figure as a number, so an actual can be compared with its forecast.
+ *
+ * These arrive as display strings — "185K", "0.3%", "-1.2%", "4.50%", "3.1M" —
+ * so the suffix carries a magnitude that has to be honoured or 185K reads as
+ * smaller than 0.3. Anything that does not contain a number at all (a speech,
+ * a statement) returns null and is simply not compared. */
+export function figure(s) {
+  if (!s) return null;
+  const t = String(s).replace(/,/g, "").trim();
+  const m = t.match(/-?\d+(?:\.\d+)?/);
+  if (!m) return null;
+  let v = parseFloat(m[0]);
+  if (/k\b/i.test(t)) v *= 1e3;
+  else if (/m\b/i.test(t)) v *= 1e6;
+  else if (/b\b/i.test(t)) v *= 1e9;
+  return Number.isFinite(v) ? v : null;
+}
+
+/**
+ * Did it come in above or below what was expected?
+ *
+ *   1 above · -1 below · 0 in line · null not comparable
+ *
+ * ABOVE AND BELOW, NOT GOOD AND BAD, and that distinction is the reason this
+ * returns a direction rather than a sentiment. A hot CPI and a hot payrolls
+ * print are both "above forecast" and they mean opposite things for the same
+ * trade; deciding which is good is the reader's job and the calendar has no
+ * business guessing at it. The arrow says which way it missed and the forecast
+ * sits next to it, which is all the information there is.
+ */
+export function surprise(actual, forecast) {
+  const a = figure(actual);
+  const f = figure(forecast);
+  if (a === null || f === null) return null;
+  if (a === f) return 0;
+  return a > f ? 1 : -1;
+}
+
 /* "MON 8:30", in ET, because every other clock on this tab is ET and a
    calendar that quietly used the device's timezone would disagree with the dial
    directly above it for anyone not sitting in New York. */

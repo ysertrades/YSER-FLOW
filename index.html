@@ -118,6 +118,44 @@
         to   { opacity: 1; filter: blur(0);   transform: none; }
       }
 
+      /* A single pass of light across the wordmark, once the letters have
+         landed. background-clip:text on a gradient that is wider than the
+         element, moved by background-position — so the only thing changing per
+         frame is where a gradient is sampled on ~200x40 pixels of text. No
+         layout, no new layer, and nothing that grows with the size of the app
+         mounting underneath it.
+
+         That last point is the whole reason it is built this way. This overlay
+         is on screen while the bundle is still downloading and parsing, and the
+         last time something expensive ran here it showed up as 175-215ms
+         main-thread blocks that stopped the dial's sweep dead. Cheap is not a
+         nicety on this element. */
+      .intro-word .g {
+        background-image: linear-gradient(
+          100deg,
+          transparent 42%,
+          rgba(255, 255, 255, .85) 50%,
+          transparent 58%
+        );
+        background-size: 260% 100%;
+        background-position: 150% 0;
+        background-repeat: no-repeat;
+        animation: introSheen 900ms cubic-bezier(.5, 0, .3, 1) 620ms both;
+      }
+      /* The sheen paints INTO the letters, so it has to composite over the
+         colour rather than replace it — the accent group would otherwise turn
+         white for the length of the pass. */
+      @keyframes introSheen {
+        from { background-position: 150% 0; }
+        to   { background-position: -60% 0; }
+      }
+      @supports (background-clip: text) or (-webkit-background-clip: text) {
+        .intro-word .g {
+          -webkit-background-clip: text;
+          background-clip: text;
+        }
+      }
+
       .intro-rule {
         height: 1px;
         width: 0;
@@ -127,6 +165,20 @@
         animation: introRule .62s cubic-bezier(.22, .9, .28, 1) .34s both;
       }
       @keyframes introRule { from { width: 0; } to { width: 78%; } }
+      /* It draws in and then draws OUT, rather than being carried off by the
+         overlay's fade. A line that retracts reads as the screen finishing;
+         a line that dissolves reads as the screen being interrupted. Timed to
+         land just before --intro-hold ends. */
+      .intro-rule::after {
+        content: "";
+        position: absolute; inset: 0;
+        background: #121212;
+        transform: scaleX(0);
+        transform-origin: right center;
+        animation: introRuleOut 260ms cubic-bezier(.5, 0, .75, 0) 980ms both;
+      }
+      .intro-rule { position: relative; overflow: hidden; }
+      @keyframes introRuleOut { to { transform: scaleX(1); } }
 
       .intro-sub {
         font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;

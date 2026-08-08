@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createCalendar, stampET, until, windowOf, CAL_CONFIGURED } from "./calendar";
+import { createCalendar, stampET, until, windowOf, surprise } from "./calendar";
 
 /* ---------------------------------------------------------------------------
  * The week ahead, under the price.
@@ -69,21 +69,21 @@ export default function Calendar({ active }) {
     };
   }, [active]);
 
-  /* GATED ON "HAS IT ANSWERED", NOT ON "ARE THERE EVENTS".
+  /* THE CARD IS ALWAYS HERE. No gate at all any more.
    *
-   * Those look like the same test and are not, and the difference is a whole
-   * state that used to be invisible. A week with no high-impact US prints is a
-   * REAL and useful answer — holiday weeks have them — and this used to hide
-   * the card for it, because it read `events.length === 0` and could not tell
-   * "nothing happened this week" from "nothing has loaded yet". The empty-week
-   * message existed and was unreachable in the shipped configuration; only a
-   * configured feed could ever show it.
+   * It has had two: `events.length === 0` first, which could not tell "nothing
+   * happened this week" from "nothing has loaded yet" and so hid the card on a
+   * genuinely quiet week; then `!loaded`, which fixed that but still meant the
+   * card could be missing from the tab entirely while a source was
+   * unreachable. Both were attempts to be tactful, and both produced the same
+   * confusion: a slot in the layout that is sometimes there and sometimes not.
    *
-   * Once the source has answered once, the card stays: it either lists the
-   * week or says the week is empty. Before that, unconfigured, it stays out of
-   * the way — nobody who did not ask for a calendar should be shown one
-   * reporting itself broken. */
-  if (!CAL_CONFIGURED && !loaded) return null;
+   * A card that is always present has one state to understand instead of
+   * three. It says which week it is showing, or that the week is empty, or
+   * that it cannot reach the source and why. All three are useful; none of
+   * them is silence. `loaded` stays because the empty message must still not
+   * be shown before the first answer — "no events this week" is a claim, and
+   * we do not have grounds for it until something has replied. */
 
   const now = Date.now();
   const down = status.state === "down";
@@ -112,13 +112,24 @@ export default function Calendar({ active }) {
             </span>
           </li>
         )}
-        {shown.map((e) => {
+        {shown.map((e, i) => {
           const done = e.at <= now;
           const isNext = e.id === nextId;
+          /* IMMINENT is its own state, not a smaller version of "next". Inside
+             the last five minutes the thing you are watching for stops being a
+             row in a list and becomes an event, and the card should say so
+             before it happens rather than after. */
+          const soon = isNext && e.at - now <= 5 * 60 * 1000;
+          const beat = done ? surprise(e.actual, e.forecast) : null;
           return (
             <li
               key={e.id}
-              className={`sess-cal-row${done ? " is-done" : ""}${isNext ? " is-next" : ""}`}
+              className={`sess-cal-row${done ? " is-done" : ""}${isNext ? " is-next" : ""}`
+                + (soon ? " is-soon" : "")
+                + (beat === 1 ? " is-above" : beat === -1 ? " is-below" : "")}
+              /* The stagger index, for the entrance. Capped so a full card does
+                 not take a second and a half to finish arriving. */
+              style={{ "--i": Math.min(i, 9) }}
             >
               <span className="sess-cal-when">
                 {stampET(e.at)}
@@ -133,7 +144,16 @@ export default function Calendar({ active }) {
                     the expectation beside it, because a number only means
                     something against what was priced in. */}
                 {done && e.actual
-                  ? <><b>{e.actual}</b>{e.forecast ? <i>vs {e.forecast}</i> : null}</>
+                  ? <>
+                      <b>
+                        {/* Which way it missed. Above and below — the reader
+                            decides whether that is good, because a hot CPI and
+                            hot payrolls point opposite ways. */}
+                        {beat === 1 ? "\u25B2 " : beat === -1 ? "\u25BC " : ""}
+                        {e.actual}
+                      </b>
+                      {e.forecast ? <i>vs {e.forecast}</i> : null}
+                    </>
                   : e.forecast
                     ? <i>exp {e.forecast}</i>
                     : e.previous ? <i>prev {e.previous}</i> : <i>—</i>}

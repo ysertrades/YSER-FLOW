@@ -960,3 +960,153 @@
    normal-looking row. */
 .sess-news-item.is-breaking .sess-news-text { color: rgba(255, 255, 255, 0.95); font-weight: 600; }
 .sess-news-item.is-breaking .sess-news-when { color: #e8ab42; }
+
+/* ── the calendar's states ───────────────────────────────────────────────────
+   Three additions, and each of them is information rather than decoration. */
+
+/* ABOVE AND BELOW FORECAST. Green up, red down — the same two colours the rest
+   of the app uses for open and closed — with an arrow so the row reads as a
+   DIRECTION rather than a verdict. A hot CPI and hot payrolls are both "above"
+   and mean opposite things; which of those is good is the reader's call, and
+   colour alone would quietly make it for them. */
+.sess-cal-row.is-above .sess-cal-vals b { color: #4ade80; }
+.sess-cal-row.is-below .sess-cal-vals b { color: #f2857f; }
+
+/* IMMINENT. Inside five minutes the countdown stops being a label and starts
+   being a warning. The breath is on the countdown only — a whole row pulsing
+   at the bottom of a scrolling column is a thing you turn off, not a thing you
+   watch. */
+.sess-cal-row.is-soon .sess-cal-when b { animation: calSoon 1.6s ease-in-out infinite; }
+@keyframes calSoon {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+/* And a hairline down the left edge, so it is findable without reading. */
+.sess-cal-row.is-next { position: relative; }
+.sess-cal-row.is-next::before {
+  content: "";
+  position: absolute; left: -16px; top: 6px; bottom: 6px;
+  width: 2px; border-radius: 1px;
+  background: #e8ab42;
+  opacity: 0.55;
+}
+.sess-cal-row.is-soon::before { opacity: 1; }
+
+/* THE ENTRANCE. Rows arrive in the order the week runs, 40ms apart, which is
+   the same staggered draw-on the dial's arcs use — so the two cards on this tab
+   arrive the same way rather than each having their own idea.
+
+   `both` matters: without the fill the row sits at opacity 1 for the length of
+   its own delay and the stagger does nothing at all. */
+.sess-cal-list .sess-cal-row {
+  animation: calRowIn 0.44s cubic-bezier(.22, .7, .3, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+@keyframes calRowIn {
+  from { opacity: 0; transform: translate3d(0, 6px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sess-cal-list .sess-cal-row { animation: none; }
+  .sess-cal-row.is-soon .sess-cal-when b { animation: none; }
+}
+
+/* ── the first-run callout ───────────────────────────────────────────────────
+   A bubble above the tab pill, pointing at one button in it.
+
+   IT SITS IN THE DOCK'S COORDINATE SPACE, not the button's. Anchoring to the
+   button itself would mean measuring it and writing a pixel offset, which is
+   wrong again the moment the bar gains or loses a tab. The bar is centred and
+   its buttons are a fixed 48px on a 6px gap, so each one's centre is a fraction
+   of the bar — expressible in CSS, and it moves with the bar for free.
+
+   Four buttons at 48px with three 6px gaps is a 210px row inside 6px of
+   padding. Centre of the third button (the editor) is therefore 27px right of
+   the bar's centre: (48+6) * (2 - 1.5) = 27. */
+.callout {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-h) + var(--tabbar-gap) + var(--safe-b) + 16px);
+  z-index: 121;                       /* above the dock, which is 120 */
+  --nudge: 0px;
+  transform: translateX(calc(-50% + var(--nudge)));
+  animation: calloutIn 0.5s cubic-bezier(.2, 1.1, .4, 1) both;
+  pointer-events: none;               /* only the body takes taps */
+}
+.callout-card  { --nudge: 27px; }     /* the trade card editor */
+.callout-guide { --nudge: 81px; }
+.callout-flow  { --nudge: -27px; }
+.callout-sessions { --nudge: -81px; }
+
+.callout-body {
+  pointer-events: auto;
+  display: grid;
+  gap: 3px;
+  max-width: min(268px, calc(100vw - 36px));
+  padding: 11px 14px 12px;
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  /* The tab bar's glass, not the cards' — it belongs to the pill it is
+     standing on, and matching the cards would make it read as a fifth card
+     floating in the wrong place. */
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  outline: 1px solid rgba(255, 255, 255, 0.10);
+}
+.callout-body:active { transform: scale(0.985); }
+
+.callout-kicker {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px; font-weight: 800;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: #e8ab42;
+}
+.callout-text {
+  font-size: 13px; line-height: 1.35;
+  color: rgba(255, 255, 255, 0.9);
+}
+.callout-go {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 2px;
+}
+
+/* A rotated square, not a border triangle. A triangle is a border trick and
+   cannot carry the bubble's blur or its hairline, so it lands as a paler
+   separate shape stuck underneath. This is the same surface, turned 45°, with
+   the two edges that face the bubble hidden behind it. */
+.callout-nib {
+  position: absolute;
+  left: 50%; bottom: -5px;
+  width: 12px; height: 12px;
+  transform: translateX(-50%) rotate(45deg);
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  border-right: 1px solid rgba(255, 255, 255, 0.10);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  border-bottom-right-radius: 3px;
+}
+
+@keyframes calloutIn {
+  from { opacity: 0; transform: translateX(calc(-50% + var(--nudge))) translateY(10px) scale(0.94); }
+  to   { opacity: 1; transform: translateX(calc(-50% + var(--nudge))) translateY(0) scale(1); }
+}
+/* Leaving is quicker and does not overshoot — an exit that springs reads as
+   the thing being reluctant to go. */
+.callout-out { animation: calloutOut 0.3s cubic-bezier(.4, 0, 1, 1) both; }
+@keyframes calloutOut {
+  from { opacity: 1; transform: translateX(calc(-50% + var(--nudge))) translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateX(calc(-50% + var(--nudge))) translateY(6px) scale(0.97); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .callout, .callout-out { animation: none; }
+}
