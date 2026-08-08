@@ -26,6 +26,11 @@ export default function Calendar({ active }) {
   const [events, setEvents] = useState([]);
   const [status, setStatus] = useState({ state: "loading", at: 0 });
   const [, setClock] = useState(0);
+  /* Whether the source has ever answered successfully — which is NOT the same
+     question as whether there are any events, and conflating the two is what
+     made "No high-impact US events this week" unreachable in the shipped
+     configuration. See the render gate below. */
+  const [loaded, setLoaded] = useState(false);
   const held = useRef([]);
 
   useEffect(() => {
@@ -40,7 +45,7 @@ export default function Calendar({ active }) {
            cancelled or rescheduled the feed dropping it is the correct answer,
            and holding on to it would be showing you a release that is not
            happening. */
-        onEvents: (list) => { held.current = list; setEvents(list); },
+        onEvents: (list) => { held.current = list; setEvents(list); setLoaded(true); },
       });
     };
     const shut = () => { if (cal) { cal.close(); cal = null; } };
@@ -64,8 +69,21 @@ export default function Calendar({ active }) {
     };
   }, [active]);
 
-  /* Nothing until there is something, unless you asked for it — see CAL_URL. */
-  if (!CAL_CONFIGURED && events.length === 0) return null;
+  /* GATED ON "HAS IT ANSWERED", NOT ON "ARE THERE EVENTS".
+   *
+   * Those look like the same test and are not, and the difference is a whole
+   * state that used to be invisible. A week with no high-impact US prints is a
+   * REAL and useful answer — holiday weeks have them — and this used to hide
+   * the card for it, because it read `events.length === 0` and could not tell
+   * "nothing happened this week" from "nothing has loaded yet". The empty-week
+   * message existed and was unreachable in the shipped configuration; only a
+   * configured feed could ever show it.
+   *
+   * Once the source has answered once, the card stays: it either lists the
+   * week or says the week is empty. Before that, unconfigured, it stays out of
+   * the way — nobody who did not ask for a calendar should be shown one
+   * reporting itself broken. */
+  if (!CAL_CONFIGURED && !loaded) return null;
 
   const now = Date.now();
   const down = status.state === "down";
