@@ -4,6 +4,12 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
+  # The calendar is fetched at build time (see below), so the site has to
+  # rebuild periodically or the week goes stale. Every 15 minutes: often enough
+  # that a released number appears while you are still looking at the screen,
+  # rare enough to stay far inside the Actions free tier.
+  schedule:
+    - cron: "*/15 * * * *"
 
 permissions:
   contents: read
@@ -24,6 +30,56 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+
+      # ── THE ECONOMIC CALENDAR ───────────────────────────────────────────
+      # Fetched HERE, on a runner, and shipped as part of the site.
+      #
+      # WHY. faireconomy.media does not send Access-Control-Allow-Origin, so a
+      # browser cannot read it cross-origin at all — confirmed on device, where
+      # Safari reported "Load failed", which is what it says when it refuses a
+      # response rather than when a server rejects one. The usual fix is a
+      # proxy, and this repo already has a machine that can make the request:
+      # the same runner that builds the site.
+      #
+      # Landing it in public/ means the app fetches it from its OWN origin.
+      # There is no CORS question left to ask, no Cloudflare account, no key,
+      # and nothing new to keep running.
+      #
+      # THE TRADE. The schedule is fixed days ahead so it is always right; what
+      # lags is `actual`, the number that appears at the moment of a release,
+      # by up to one cron interval. GitHub's scheduler is also not punctual
+      # under load. If you ever want the actuals live to the second, that is
+      # what worker/calendar.js is for — deploy it and point
+      # <meta name="cal-feed"> at it, and this step becomes the fallback.
+      #
+      # continue-on-error, deliberately: a feed that is briefly unreachable
+      # must not stop the rest of the app from deploying. The card says
+      # "Cannot reach the calendar — HTTP 404" until the next run, which is
+      # true, and which is better than a stale week presented as current.
+      #
+      # DOWNLOAD SOMEWHERE ELSE, VALIDATE, THEN MOVE. Writing straight into
+      # public/ looks equivalent and is not: curl creates the output file
+      # before it knows whether the request worked, so a 503 or a timeout
+      # leaves an empty calendar.json sitting in the build. continue-on-error
+      # then shrugs and ships it, and the app fetches a file that exists,
+      # is not JSON, and reports a parse error instead of the plain 404 that
+      # correctly means "no copy in this build". The temp file makes a failed
+      # fetch a no-op.
+      - name: Fetch the economic calendar
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 3 --retry-delay 2 --max-time 25 \
+            -H "User-Agent: yser-flow/1.0 (+https://ysertrades.github.io)" \
+            -H "Accept: application/json" \
+            "https://nfs.faireconomy.media/ff_calendar_thisweek.json" \
+            -o "$RUNNER_TEMP/calendar.json"
+          # Refuse to ship something that is not a JSON array. A courtesy page
+          # or an error body written to this path would be served as the
+          # calendar and parsed as a shape change.
+          node -e "const a=require(process.env.RUNNER_TEMP + '/calendar.json'); if(!Array.isArray(a)) throw new Error('not an array'); console.log('calendar:', a.length, 'events')"
+          mv "$RUNNER_TEMP/calendar.json" public/calendar.json
+
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -19,23 +19,45 @@
  * wrapped-in-an-object shapes are accepted.
  * ------------------------------------------------------------------------- */
 
-const DIRECT = "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
+/* SAME ORIGIN, AND THAT IS THE WHOLE FIX.
+ *
+ * This used to ask nfs.faireconomy.media directly, on the theory that the
+ * question — does that host send Access-Control-Allow-Origin — could only be
+ * answered on a real device. It was, and the answer is no: Safari reported
+ * "Load failed", which is what it says when it REFUSES a response, not when a
+ * server rejects one.
+ *
+ * So the request does not cross an origin any more. The feed is fetched on a
+ * GitHub Actions runner at build time and shipped in public/ as part of the
+ * site — see .github/workflows/deploy.yml. A page fetching a file from the
+ * host that served it has no CORS check to fail, no preflight, no key and no
+ * proxy to keep running.
+ *
+ * What it costs is freshness on ONE field. The week's schedule is fixed days
+ * ahead and is always right; `actual` — the number that lands at the moment of
+ * a release — is as old as the last build, up to the workflow's fifteen-minute
+ * cron. If you want that live to the second, deploy worker/calendar.js and
+ * point the meta below at it; this file becomes the fallback and nothing else
+ * changes. */
+const SAME_ORIGIN = "calendar.json";
 
-/* Same arrangement as the wire it replaces: optional override in index.html,
+/* Optionally overridden in index.html:
  *
  *     <meta name="cal-feed" content="https://yser-cal.<you>.workers.dev">
  *
- * and when it is absent the app asks the source directly. If faireconomy sends
- * Access-Control-Allow-Origin it simply works with no Worker at all; if it does
- * not, the card stays invisible rather than announcing a failure to someone who
- * never asked for a calendar. Configured means deliberate, and a configured
- * feed shows its failures. */
+ * for the live-to-the-second version. Unset, the built-in copy is used. */
 const META = (typeof document !== "undefined"
   && document.querySelector('meta[name="cal-feed"]')?.content) || "";
 
-export const CAL_URL = META || DIRECT;
+export const CAL_URL = META || SAME_ORIGIN;
 export const CAL_CONFIGURED = Boolean(META);
-export const CAL_GIVE_UP = 3;
+
+/* NOBODY GIVES UP ANY MORE. The give-up existed for probing a foreign host
+   that might never be allowed through, where retrying every twenty seconds
+   forever was pure waste. A same-origin file is either there or the site is
+   broken, so a failure here is transient by definition and worth retrying —
+   the backoff below is enough to keep it cheap. */
+export const CAL_GIVE_UP = 0;
 
 /* A WEEK OF EVENTS DOES NOT CHANGE EVERY TWENTY SECONDS. The schedule is fixed
    days ahead; the only thing that moves is `actual`, which appears the moment a
