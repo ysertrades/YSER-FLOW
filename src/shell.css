@@ -673,36 +673,51 @@
    moved, retimed and given its own transition, because all three still animated
    it.
 
-   So it is a permanent background layer at a constant opacity, and what covers
-   it is ordinary painting order. Only Sessions is a transparent surface, so
-   only Sessions shows the field. Nothing fades, so nothing can be composited
-   out of step.
+   NOT position:fixed, AND NOT AT THE ROOT. Both of those took several rounds to
+   stop being true, and together they were the reason the dots kept arriving in
+   front of the session table for a frame.
 
-   TWO THINGS HERE ARE ABOUT PAINT ORDER, NOT ABOUT LOOKS.
+   As a fixed, root-level canvas this was a separate compositing layer sitting
+   beside .pane, which is also fixed. Two fixed layers at the root are two
+   things a compositor orders at its own discretion, and iOS promotes and
+   reorders fixed layers more eagerly than anything else on a page. Every
+   z-index out there — -2, then 0 with everything else pushed positive — was a
+   REQUEST that the field stay behind the card. Being refused for one frame on
+   the way in is exactly what "they jump in front and go back" is.
 
-   NO NEGATIVE Z-INDEX. This used to be z-index:-2, which put the field in step
-   3 of the painting algorithm — behind the stacking context's in-flow content
-   but above its background. It works, and it is the fragile way to get there:
-   the field's place in the order then depends on the root stacking context
-   staying exactly as it is, and on every covering surface being an in-flow
-   block. Sitting at 0 with everything that must cover it explicitly positive
-   says the same thing in a way nothing can reinterpret.
+   It is absolute now, and it lives INSIDE the Sessions pane as its first child.
+   The field and .sess-scroll are siblings in the pane's own stacking context,
+   ordered 0 before 1, and painting order within a stacking context is not the
+   compositor's to reinterpret. There is no arrangement of layers that puts it
+   in front. It also means nothing else has to arrange itself around it: the
+   calculator and the editor hide the field by being other panes, not by
+   covering a canvas that spans the whole app.
 
-   THE LAYER IS PERMANENT. transform + will-change keep this canvas on its own
-   composited layer for the life of the app, so the layer is never BUILT at the
-   moment of a tab switch. That moment is the whole problem: .pane-on arrives as
-   a brand-new composited layer of its own, and a compositor placing a new layer
-   against a canvas it is promoting at the same instant is what puts the dots in
-   front of the card for a frame before the order settles. A layer that already
-   exists cannot be mis-ordered on creation.
+   transform + will-change stay, so the layer still exists for the life of the
+   app rather than being built at the moment of a switch.
 
    The drift still stops when the tab is not up — see Particles.jsx. This is
    about paint, not about work. */
 .sess-particles {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  /* NOT inset:0, and NOT width:auto either.
+
+     An absolutely positioned child resolves its offsets against the containing
+     block's PADDING box, and .pane's padding is the safe-area insets — so
+     inset:0 in here would stop the field short of the screen edges by the notch
+     and the home indicator, leaving a bare band top and bottom on exactly the
+     phones this is built for. So each offset is backed out by its own inset.
+
+     The size has to be spelled out rather than left to the offsets, because a
+     canvas is a REPLACED element: for those, width:auto resolves to the
+     intrinsic size — the canvas element's default 300x150 — instead of
+     stretching between left and right the way it would for a block. Left as
+     auto the field collapsed into a small rectangle in one corner and the card
+     had nothing behind it at all. */
+  top: calc(-1 * env(safe-area-inset-top, 0px));
+  left: calc(-1 * env(safe-area-inset-left, 0px));
+  width: calc(100% + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px));
+  height: calc(100% + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
   display: block;
   z-index: 0;
   pointer-events: none;

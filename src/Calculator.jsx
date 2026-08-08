@@ -291,19 +291,12 @@ export default function Calculator({ phase = "on" }) {
         }
         .wrap {
           min-height: 100vh;
-          /* Opaque, and load-bearing: this is what hides the Sessions particle
-             field on this tab. The field is a permanent layer rather than
-             something that fades in and out, so the thing that covers it is
-             ordinary painting order. Same #121212 as html/body, so nothing
-             looks different.
-
-             The z-index is not decoration. The field used to sit at z-index -2
-             and this block's background covered it for free — a negatively
-             stacked layer paints under every in-flow background. It sits at 0
-             now, because negative stacking is the fragile way to stay behind
-             something, and that means everything covering it has to say so. */
-          position: relative;
-          z-index: 1;
+          /* Same #121212 as html/body, so nothing looks different — and no
+             longer load-bearing. This used to be what hid the Sessions particle
+             field on this tab, back when the field was a root-level canvas
+             spanning the whole app and every other surface had to arrange
+             itself to cover it. The field lives inside the Sessions pane now,
+             so it is simply not on this tab to hide. */
           background: #121212;
           /* 24px, not 50: --tabbar-reserve already carries a 14px gap above the
              pill, and the extra was pure overhang — enough to push an otherwise

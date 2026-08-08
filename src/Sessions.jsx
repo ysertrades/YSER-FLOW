@@ -305,15 +305,30 @@ export default function Sessions({ active, ready = true, now }) {
 
   return (
     <>
-    {/* OUTSIDE the pane, deliberately, and this is what stops it flashing.
-        Inside, the canvas inherited the pane's animating opacity — and a canvas
-        is its own compositing layer, so it arrives at full strength for a frame
-        before the group opacity is applied to it. It also rode the pane's 5px
-        entrance translate, which slid the whole background up under content
-        that was arriving. Its own layer, its own fade, on exactly the pane's
-        timing so it still arrives as part of the same movement. */}
-    <Particles active={shown} />
     <div className={`pane ${paneState}`} aria-hidden={!active}>
+      {/* INSIDE the pane, as its first child, and that is the whole point.
+
+          This lived outside for several rounds, as a position:fixed canvas at
+          the root — its own layer, its own fade, timed to match the pane's.
+          Matching is the problem. Two position:fixed layers at the root are two
+          things the compositor orders at its own discretion, and iOS promotes
+          and reorders fixed layers more eagerly than anything else on the page.
+          Every z-index written out there was a REQUEST that the field stay
+          behind the card, and the request is what kept being refused for a
+          frame on the way in.
+
+          In here it is not a request. The field and .sess-scroll are siblings
+          in the pane's own stacking context, ordered 0 before 1, and painting
+          order within a stacking context is not the compositor's to reinterpret.
+          There is no arrangement of layers that puts it in front.
+
+          The old comment warned that a canvas inside an animating group arrives
+          at full strength for a frame before the group opacity reaches it. That
+          is still true, and it is now harmless twice over: the canvas fades its
+          own PIXELS to the pane's opacity as well, so a mis-timed group only
+          ever makes it dimmer than intended — and whatever its brightness, it
+          is behind the card. */}
+      <Particles active={shown} />
       <div className="sess-scroll">
         <div className="sess-wrap">
           <div className="sess-head">
