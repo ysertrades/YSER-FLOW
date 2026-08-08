@@ -40,9 +40,14 @@ const TTL = 15;
 /* Only these origins get an allow header. A public CORS proxy is exactly what
    this is NOT: leaving it open turns your Worker into free bandwidth for
    anyone who finds the URL, on your quota. */
+/* NOT whop.com, and that was a mistake worth spelling out. A fetch made from
+   inside an iframe carries the IFRAME's origin, not the parent page's — the
+   embed is served from Pages, so every request arrives as
+   https://ysertrades.github.io however it is framed. Listing the host that
+   frames you does nothing; listing the host that serves you is the whole job.
+   Add a domain here only if you actually serve the app from it. */
 const ALLOWED = [
   "https://ysertrades.github.io",
-  "https://whop.com",
   "http://127.0.0.1:8907",
   "http://localhost:8907",
 ];

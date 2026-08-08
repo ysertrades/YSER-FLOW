@@ -17,21 +17,45 @@
  * rather than dropped — a headline with no link is still a headline.
  * ------------------------------------------------------------------------- */
 
-/* Configured in index.html, not baked into the bundle:
+/* The wire Financial Juice publishes. Public, keyless, and the same one the bot
+   reads. */
+const DIRECT = "https://www.financialjuice.com/feed.ashx?xy=rss";
+
+/* Optionally overridden in index.html, not baked into the bundle:
  *
  *     <meta name="news-feed" content="https://yser-news.<you>.workers.dev">
  *
- * Two reasons it lives there. Changing where the wire comes from is then an
- * edit to one line of HTML rather than a rebuild — and, more importantly, when
- * the meta is ABSENT this returns "" and the card does not render at all.
+ * WHY THIS TRIES THE FEED DIRECTLY WHEN NOTHING IS CONFIGURED.
  *
- * That default is deliberate. The alternative — shipping a sample feed so the
- * card has something to show before the Worker exists — would put fabricated
- * headlines on a screen people read to find out what happened. An absent card
- * is honest; a card full of invented news is not, however clearly it is
- * labelled in a comment nobody reads. */
-export const NEWS_URL = (typeof document !== "undefined"
+ * Whether a browser can read that URL comes down to one header — does
+ * financialjuice.com send Access-Control-Allow-Origin — and that question
+ * cannot be answered from where this was built: the environment blocks the
+ * host, and so did the environment the bot's integration notes came from.
+ * Nobody involved has been able to check.
+ *
+ * So the app checks, on the device, which is the only place the answer is
+ * real. Unconfigured, it asks the feed directly. If the header is there it
+ * simply works and no Worker is needed at all. If it is not, the fetch is
+ * refused, the wire gives up after a few tries, and the card never renders —
+ * see NEWS_GIVE_UP below.
+ *
+ * Setting the meta turns that off and pins it to whatever you point at, which
+ * is what the Worker is for. Configured means deliberate, so a configured wire
+ * that cannot be reached SHOWS its failure rather than hiding; an unconfigured
+ * one hides, because a card reporting "Wire down" to someone who never asked
+ * for a wire is just a broken-looking app. */
+const META = (typeof document !== "undefined"
   && document.querySelector('meta[name="news-feed"]')?.content) || "";
+
+export const NEWS_URL = META || DIRECT;
+export const NEWS_CONFIGURED = Boolean(META);
+
+/* Consecutive failures before an UNCONFIGURED wire stops trying. Three is
+   enough to ride out a flaky connection and few enough that a browser which is
+   never going to be allowed through does not spend the session retrying every
+   twenty seconds for nothing. A configured wire never gives up — you told it
+   where to look, so it keeps looking. */
+export const NEWS_GIVE_UP = 3;
 
 /* Poll interval, also from a meta so it can be tuned against the real wire
    without a rebuild:  <meta name="news-poll" content="20000">
@@ -163,11 +187,28 @@ export function createWire({
   onItems,
   onStatus = () => {},
   fetcher = (u, o) => fetch(u, o),
+  /* Only an unconfigured wire gives up — see NEWS_GIVE_UP. */
+  giveUpAfter = NEWS_CONFIGURED ? 0 : NEWS_GIVE_UP,
 } = {}) {
   let timer = 0;
   let shut = false;
   let etag = null;
   let fails = 0;
+  /* CONDITIONAL REQUESTS TURN THEMSELVES OFF IF THEY ARE WHAT IS BREAKING.
+   *
+   * If-None-Match is not a CORS-safelisted request header, so sending it makes
+   * the browser fire a preflight OPTIONS first. Our Worker answers those. A
+   * plain RSS host almost certainly does not — which would mean the direct feed
+   * works on the very first poll, when there is no ETag to send yet, and fails
+   * on every one after it. A feature that works once and then stops is worse
+   * than one that never starts, because nothing about it looks broken.
+   *
+   * So the first failure that happens while an ETag is in play is treated as a
+   * suspect rather than a verdict: drop the header, forget the ETag, and retry
+   * immediately instead of backing off. If that succeeds, the endpoint simply
+   * does not do preflights and we stop asking. If it fails too, it was never
+   * about the header and the normal backoff takes over. */
+  let conditional = true;
 
   const tick = async () => {
     if (shut) return;
@@ -181,9 +222,12 @@ export function createWire({
      * doubles with nothing in the log to say so. Fifty milliseconds of latency
      * is enough to turn a twenty-second feed into a forty-second one. */
     const started = Date.now();
+    let sentEtagOuter = null;
     try {
+      const sentEtag = conditional && etag ? etag : null;
+      sentEtagOuter = sentEtag;
       const res = await fetcher(url, {
-        headers: etag ? { "If-None-Match": etag } : {},
+        headers: sentEtag ? { "If-None-Match": sentEtag } : {},
         cache: "no-store",
       });
       if (res.status === 304) {                    // nothing new, and no body
@@ -210,8 +254,18 @@ export function createWire({
         throw new Error(`HTTP ${res.status}`);
       }
     } catch (e) {
+      /* The header is the first suspect, and it gets exactly one chance to be
+         the culprit before the normal failure path takes over. */
+      if (sentEtagOuter) {
+        conditional = false;
+        etag = null;
+        if (shut) return;
+        timer = setTimeout(tick, 0);
+        return;
+      }
       fails += 1;
       onStatus({ state: "down", at: Date.now(), error: String(e.message || e) });
+      if (giveUpAfter && fails >= giveUpAfter) { shut = true; return; }
     }
     if (shut) return;
     /* Back off on failure so a wire that is down does not get polled every
