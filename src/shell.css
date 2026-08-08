@@ -176,9 +176,19 @@
   z-index: 101;
   animation: paneIn var(--pane-in) var(--pane-ease) var(--pane-in-delay) both;
 }
+/* Opacity ONLY. There used to be a 5px rise in here, and it cost more than it
+   was worth: the pane is an ancestor of .sess-block, which carries a
+   backdrop-filter, and a moving ancestor makes WebKit re-resolve that card's
+   backdrop every frame of the movement. Re-resolving a backdrop while the
+   layer underneath it is a canvas being promoted is how the card samples the
+   field un-attenuated and the dots read as sitting on top of it.
+
+   One property, no geometry, nothing for the backdrop to be re-resolved
+   against. The rise was three frames of travel nobody could describe; the dots
+   coming to the front is the thing you actually see. */
 @keyframes paneIn {
-  from { opacity: 0; transform: translate3d(0, 5px, 0); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* Leaving. An animation again, and for a less obvious reason than arriving:
@@ -195,9 +205,9 @@
   animation: paneOut var(--pane-out) var(--pane-ease) both;
 }
 @keyframes paneOut {
-  from { opacity: 1; visibility: visible; transform: none; }
+  from { opacity: 1; visibility: visible; }
   99%  { visibility: visible; }
-  to   { opacity: 0; visibility: hidden; transform: translate3d(0, -3px, 0); }
+  to   { opacity: 0; visibility: hidden; }
 }
 
 /* Never display:none — that reloads the iframe in some WebKit versions and
@@ -664,11 +674,27 @@
    it.
 
    So it is a permanent background layer at a constant opacity, and what covers
-   it is ordinary painting order: z-index -1 puts it under every in-flow block
-   background, so the calculator's .wrap hides it with its own ground, and the
-   editor and guide hide it with their opaque iframes. Only Sessions is a
-   transparent surface, so only Sessions shows the field. Nothing fades, so
-   nothing can be composited out of step.
+   it is ordinary painting order. Only Sessions is a transparent surface, so
+   only Sessions shows the field. Nothing fades, so nothing can be composited
+   out of step.
+
+   TWO THINGS HERE ARE ABOUT PAINT ORDER, NOT ABOUT LOOKS.
+
+   NO NEGATIVE Z-INDEX. This used to be z-index:-2, which put the field in step
+   3 of the painting algorithm — behind the stacking context's in-flow content
+   but above its background. It works, and it is the fragile way to get there:
+   the field's place in the order then depends on the root stacking context
+   staying exactly as it is, and on every covering surface being an in-flow
+   block. Sitting at 0 with everything that must cover it explicitly positive
+   says the same thing in a way nothing can reinterpret.
+
+   THE LAYER IS PERMANENT. transform + will-change keep this canvas on its own
+   composited layer for the life of the app, so the layer is never BUILT at the
+   moment of a tab switch. That moment is the whole problem: .pane-on arrives as
+   a brand-new composited layer of its own, and a compositor placing a new layer
+   against a canvas it is promoting at the same instant is what puts the dots in
+   front of the card for a frame before the order settles. A layer that already
+   exists cannot be mis-ordered on creation.
 
    The drift still stops when the tab is not up — see Particles.jsx. This is
    about paint, not about work. */
@@ -678,8 +704,10 @@
   width: 100%;
   height: 100%;
   display: block;
-  z-index: -2;
+  z-index: 0;
   pointer-events: none;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 
