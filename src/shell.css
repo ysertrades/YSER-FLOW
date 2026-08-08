@@ -528,25 +528,116 @@
 .sess-cal-label { color: rgba(255, 255, 255, 0.3); }
 .sess-cal-src { color: rgba(255, 255, 255, 0.22); letter-spacing: 0.14em; }
 
-.sess-cal-list { list-style: none; margin: 0; padding: 0; min-height: 500px; }
+/* THE HEIGHT IS THE WEEK'S LENGTH.
+ *
+ * This reserved 500px so the card could not change size as the week loaded.
+ * That was the right fix for a loading jump and the wrong shape for the card:
+ * on a Friday with one release left it was one row and four hundred pixels of
+ * nothing. The list is content-sized now and Calendar.jsx writes the measured
+ * height, so a row retiring animates instead of snapping — content decides the
+ * number, this decides how long it takes to get there.
+ *
+ * The negative left margin against the equal padding is what lets the next-event
+ * rail sit outside the rows while staying inside the box `overflow` clips to.
+ * Without it the rail is shaved off the moment the height starts moving. */
+.sess-cal-list {
+  margin: 0 0 0 -10px; padding: 0 0 0 10px;
+  overflow: hidden;
+  transition: height 0.42s cubic-bezier(.22, .7, .3, 1);
+}
+/* The inner list is never given a height, which is what makes it measurable —
+   see the note in Calendar.jsx. Everything visual belongs to the box above. */
+.sess-cal-rows,
+.sess-cal-day-rows { list-style: none; margin: 0; padding: 0; }
 .sess-cal-row {
   display: flex; align-items: flex-start; gap: 10px;
   padding: 8px 0;
   border-top: 0.4px solid rgba(176, 176, 176, 0.1);
   height: 50px; box-sizing: border-box;
 }
-.sess-cal-row:first-child { border-top: 0; }
+.sess-cal-day-rows .sess-cal-row:first-child { border-top: 0; }
+.sess-cal-rows > .sess-cal-row:first-child { border-top: 0; }
 
-.sess-cal-when {
-  flex: none; width: 62px;
-  display: flex; flex-direction: column; gap: 1px;
+/* ── THE DAY HEADING ────────────────────────────────────────────────────────
+ *
+ * The date used to be stamped on every row — WED 13:30, THU 08:30 — which
+ * repeats the day once per row and spends a quarter of a phone's width doing
+ * it. Said once, as a heading, it becomes the structure of the week instead of
+ * noise down the left edge, and the rows get their width back for the thing
+ * that is actually different about them: the time.
+ *
+ * The numeral leads because a date is a number you scan for, and the weekday
+ * sits beside it in the same mono the rest of the tab labels things in. The
+ * month is printed only when it changes. */
+.sess-cal-day {
+  display: flex; align-items: center; gap: 8px;
+  padding: 13px 0 7px;
+}
+.sess-cal-group:first-child .sess-cal-day { padding-top: 4px; }
+.sess-cal-dnum {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 18px; font-weight: 300; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.82);
+  min-width: 20px;
+}
+.sess-cal-dstack { display: flex; flex-direction: column; gap: 2px; }
+.sess-cal-dstack b {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.18em; line-height: 1;
+  color: rgba(255, 255, 255, 0.5);
+}
+.sess-cal-dstack em {
+  font-style: normal;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 8px; font-weight: 700; letter-spacing: 0.16em; line-height: 1;
+  color: rgba(255, 255, 255, 0.24);
+}
+.sess-cal-dtag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+  color: #e8ab42;
+  padding: 3px 6px; border-radius: 5px;
+  background: rgba(232, 171, 66, 0.11);
+  white-space: nowrap;
+}
+.sess-cal-day i { flex: 1; height: 1px; background: rgba(255, 255, 255, 0.07); }
+.sess-cal-dcount {
+  display: flex; align-items: baseline; gap: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10px; font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.42);
+  color: rgba(255, 255, 255, 0.38);
+  white-space: nowrap;
+}
+.sess-cal-dcount em {
+  font-style: normal; font-size: 8px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgba(255, 255, 255, 0.22);
+}
+/* Today is the one heading that is allowed to be brighter than its rows. */
+.sess-cal-day.is-today .sess-cal-dnum { color: #f2d08a; }
+.sess-cal-day.is-today .sess-cal-dstack b { color: rgba(255, 255, 255, 0.72); }
+
+.sess-cal-when {
+  flex: none; width: 56px;
+  display: flex; flex-direction: column; gap: 1px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px; font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.46);
   padding-top: 2px;
 }
-/* The countdown, on the next event only. */
-.sess-cal-when b { font-weight: 700; font-size: 9.5px; color: #e8ab42; }
+/* The countdown, on the next event only. It must never wrap: the row is a fixed
+   height, so a second line does not make the row taller, it makes the text
+   leave the row. */
+.sess-cal-when b {
+  font-weight: 700; font-size: 9.5px; color: #e8ab42;
+  white-space: nowrap;
+}
+/* And its opposite: a release that has already landed, saying so in words. A
+   negative countdown is not a countdown. */
+.sess-cal-when b.out {
+  color: rgba(255, 255, 255, 0.3); font-weight: 700;
+  font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+}
 
 .sess-cal-title {
   flex: 1; min-width: 0;
@@ -565,9 +656,9 @@
 .sess-cal-vals b { font-weight: 700; color: rgba(255, 255, 255, 0.92); }
 .sess-cal-vals i { font-style: normal; color: rgba(255, 255, 255, 0.3); font-size: 9.5px; }
 
-/* Already happened. Dimmed rather than removed — the last two results are the
-   most useful numbers on the card, because they are the only ones that are
-   facts. */
+/* Already happened, and on its way out. It stays for an hour so the number it
+   printed is readable, and it is dimmed the whole time so it is never mistaken
+   for something still to come. */
 .sess-cal-row.is-done .sess-cal-title { color: rgba(255, 255, 255, 0.42); }
 .sess-cal-row.is-done .sess-cal-when { color: rgba(255, 255, 255, 0.24); }
 
@@ -576,7 +667,45 @@
 .sess-cal-row.is-next .sess-cal-title { color: rgba(255, 255, 255, 0.95); font-weight: 600; }
 .sess-cal-row.is-next .sess-cal-when { color: rgba(255, 255, 255, 0.7); }
 
-.sess-cal-empty .sess-cal-title { color: rgba(255, 255, 255, 0.3); }
+/* ── NOTHING LEFT ───────────────────────────────────────────────────────────
+   One line and a countdown, not an empty box. "The week is done" and "here is
+   when the next one starts" are the same fact, and the second half is the
+   useful one — it is the only thing on this card that is still ahead of you. */
+.sess-cal-rest {
+  height: auto; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 10px 0 14px;
+}
+.sess-cal-rest .sess-cal-title {
+  color: rgba(255, 255, 255, 0.46); font-size: 12.5px;
+  display: block; -webkit-line-clamp: none;
+}
+.sess-cal-opens {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.26);
+}
+.sess-cal-opens b {
+  color: #e8ab42; letter-spacing: 0.1em; font-size: 10px;
+  font-variant-numeric: tabular-nums; text-transform: none;
+}
+
+/* ── LOADING ────────────────────────────────────────────────────────────────
+   Bars where the text will be, rather than a spinner. The card arrives at
+   roughly its real size, which is the whole reason the 500px reserve existed;
+   this does the same job without pretending the week is longer than it is. */
+.sess-cal-row.is-skeleton em {
+  display: block; height: 8px; border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  animation: calShim 1.5s ease-in-out infinite;
+}
+.sess-cal-row.is-skeleton .sess-cal-when em { width: 34px; margin-top: 3px; }
+.sess-cal-row.is-skeleton .sess-cal-title em { width: 62%; margin-top: 3px; }
+.sess-cal-row.is-skeleton .sess-cal-vals em { width: 100%; margin-top: 3px; }
+@keyframes calShim {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
 
 .sess-block { width: 100%; padding: 14px 16px 6px; margin-bottom: 12px; }
 .sess-blabel {
@@ -981,24 +1110,30 @@
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.45; }
 }
-/* And a hairline down the left edge, so it is findable without reading. */
+/* And a hairline down the left edge, so it is findable without reading. It sits
+   in the gutter the list's negative margin opens up — see .sess-cal-list. */
 .sess-cal-row.is-next { position: relative; }
 .sess-cal-row.is-next::before {
   content: "";
-  position: absolute; left: -16px; top: 6px; bottom: 6px;
+  position: absolute; left: -8px; top: 6px; bottom: 6px;
   width: 2px; border-radius: 1px;
   background: #e8ab42;
   opacity: 0.55;
 }
 .sess-cal-row.is-soon::before { opacity: 1; }
 
-/* THE ENTRANCE. Rows arrive in the order the week runs, 40ms apart, which is
-   the same staggered draw-on the dial's arcs use — so the two cards on this tab
-   arrive the same way rather than each having their own idea.
+/* THE ENTRANCE. Days arrive in the order the week runs, which is the same
+   staggered draw-on the dial's arcs use — so the two cards on this tab arrive
+   the same way rather than each having their own idea.
+
+   The delay is set on the GROUP and inherits to its rows, because custom
+   properties inherit and a day should land as a day rather than as three rows
+   that happen to be adjacent.
 
    `both` matters: without the fill the row sits at opacity 1 for the length of
    its own delay and the stagger does nothing at all. */
-.sess-cal-list .sess-cal-row {
+.sess-cal-list .sess-cal-row,
+.sess-cal-list .sess-cal-day {
   animation: calRowIn 0.44s cubic-bezier(.22, .7, .3, 1) both;
   animation-delay: calc(var(--i, 0) * 40ms);
 }
@@ -1007,8 +1142,13 @@
   to   { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sess-cal-list .sess-cal-row { animation: none; }
+  .sess-cal-list .sess-cal-row,
+  .sess-cal-list .sess-cal-day { animation: none; }
   .sess-cal-row.is-soon .sess-cal-when b { animation: none; }
+  .sess-cal-row.is-skeleton em { animation: none; }
+  /* A card that resizes without warning is worse than one that jumps to the
+     right size, if you have asked for less motion. */
+  .sess-cal-list { transition: none; }
 }
 
 /* ── the first-run callout ───────────────────────────────────────────────────
