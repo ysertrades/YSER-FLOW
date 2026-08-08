@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createWire, ago, NEWS_URL } from "./news";
+import { createWire, ago, NEWS_CONFIGURED } from "./news";
 
 /* ---------------------------------------------------------------------------
  * The wire, under the price.
@@ -48,7 +48,7 @@ export default function News({ active, sessionName, sessionStart }) {
   const freshTimer = useRef(0);
 
   useEffect(() => {
-    if (!active || !NEWS_URL) return undefined;
+    if (!active) return undefined;
     let wire = null;
     const open = () => {
       if (wire || document.hidden) return;
@@ -107,9 +107,17 @@ export default function News({ active, sessionName, sessionStart }) {
     };
   }, [active]);
 
-  /* No wire configured, no card. See NEWS_URL in news.js — an absent card beats
-     one showing headlines that are not real. */
-  if (!NEWS_URL) return null;
+  /* NOTHING UNTIL THERE IS SOMETHING, unless you asked for it.
+   *
+   * Unconfigured, the wire is trying the feed directly to find out whether this
+   * browser is allowed to read it — a question nobody has been able to answer
+   * off-device. Until that comes back with headlines there is nothing worth
+   * showing, and if it never does the card simply never appears. Someone who
+   * did not ask for a newswire should not be told one is broken.
+   *
+   * Configured is the opposite: you pointed it at something on purpose, so its
+   * failures are yours to see. */
+  if (!NEWS_CONFIGURED && items.length === 0) return null;
 
   const now = Date.now();
   /* Already capped at SHOW when the history is built, so no second slice. */
