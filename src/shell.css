@@ -393,6 +393,109 @@
   .sess-tilt .sess-block { transition: none; }
 }
 
+/* ---------------------------------------------------------------------------
+   The price card.
+
+   Same .glass as the table above it, so it reads as the next card in a stack
+   rather than a widget bolted on. No tilt: the tilt is what marks the Today
+   card as this tab's centrepiece, and giving it to everything spends it.
+
+   EVERY NUMBER IS TABULAR AND EVERY SLOT HAS A FLOOR. A price is the one piece
+   of text on this screen that changes several times a second, and proportional
+   digits change width as they change value — the row would twitch continuously,
+   which is the same fault that made the dial's readout collide with its own
+   sub-label. min-width on the slots stops 9,999 -> 10,000 from moving anything
+   beside it, and the card's height never depends on whether data has arrived. */
+.sess-feed {
+  width: 100%;
+  padding: 12px 16px 13px;
+  margin-bottom: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.sess-feed-top { display: flex; align-items: center; gap: 8px; }
+.sess-feed-top i { flex: 1; height: 1px; background: rgba(255, 255, 255, 0.09); }
+.sess-feed-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex: none;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.5s ease, box-shadow 0.5s ease;
+}
+.sess-feed-dot.on {
+  background: #4ade80;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.13);
+}
+.sess-feed-dot.stale { background: #e8ab42; box-shadow: 0 0 0 3px rgba(232, 171, 66, 0.13); }
+.sess-feed-state {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9.5px; font-weight: 800;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+}
+.sess-feed-chips { display: flex; gap: 5px; flex: none; }
+.sess-feed-chip {
+  height: 24px; padding: 0 10px; border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+  color: rgba(255, 255, 255, 0.62);
+  font: 700 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em; cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+/* The app's selected-control language, the same #E9EDF4 the deck and the
+   editor use — light on dark, never a coloured fill. */
+.sess-feed-chip.on {
+  background: #e9edf4; border-color: #e9edf4; color: #121212;
+}
+
+.sess-feed-price {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; margin: 11px 0 12px;
+}
+.sess-feed-price b {
+  font-size: 27px; font-weight: 700; letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.92);
+  transition: color 0.4s ease;
+}
+.sess-feed-price b.dim { color: rgba(255, 255, 255, 0.42); }
+.sess-feed-chg {
+  font-size: 13px; font-weight: 600;
+  color: rgba(255, 255, 255, 0.34);
+  min-width: 68px; text-align: right;   /* so the sign appearing moves nothing */
+}
+.sess-feed-chg.up { color: #4ade80; }
+.sess-feed-chg.down { color: #f2857f; }
+
+/* Always present, always this tall — a bar that appears with the first tick
+   would change the card's height and jog the Today card sitting above it. */
+.sess-feed-bar { position: relative; height: 3px; margin-bottom: 9px; }
+.sess-feed-bar i {
+  position: absolute; inset: 0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.sess-feed-mark {
+  position: absolute; top: 50%; width: 2px; height: 11px;
+  border-radius: 1px; background: rgba(255, 255, 255, 0.85);
+  transform: translate(-50%, -50%);
+  transition: left 0.32s cubic-bezier(.22, .7, .3, 1);
+}
+@media (prefers-reduced-motion: reduce) { .sess-feed-mark { transition: none; } }
+
+.sess-feed-foot {
+  display: flex; align-items: baseline; gap: 10px;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.34);
+}
+.sess-feed-foot span { min-width: 62px; }
+.sess-feed-foot span:last-child { text-align: right; }
+.sess-feed-foot em {
+  flex: 1; text-align: center; font-style: normal;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.26);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
 .sess-block { width: 100%; padding: 14px 16px 6px; margin-bottom: 12px; }
 .sess-blabel {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
