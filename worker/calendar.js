@@ -21,8 +21,8 @@
  * trust again.
  *
  * QUICK IS THE CACHE. Every visitor collapses onto one upstream fetch per
- * TTL window, served from Cloudflare's edge near them rather than from
- * financialjuice.com. And the ETag passes straight through, so a client that
+ * TTL window, served from Cloudflare's edge near them rather than from the feed
+ * host. And the ETag passes straight through, so a client that
  * already has the current feed gets a 304 with no body at all.
  *
  * Deploy:
@@ -76,7 +76,7 @@ export default {
       upstream = await fetch(FEED, {
         /* cf.cacheTtl is what makes this cheap: Cloudflare serves the cached
            copy without leaving the edge, so a thousand readers are one request
-           to financialjuice.com every TTL seconds. */
+           upstream every TTL seconds. */
         cf: { cacheTtl: TTL, cacheEverything: true },
         headers: {
           /* Some feed hosts return 403 to a bare fetch with no UA. */

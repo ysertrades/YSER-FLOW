@@ -73,9 +73,25 @@ export function parseCalendar(raw) {
     : null;
   if (!list) throw new Error("calendar is not a list of events");
 
+  /* US AND HIGH, MATCHED LOOSELY ON PURPOSE.
+   *
+   * An exact === on both fields is the obvious way to write this and the wrong
+   * one here, because the live strings have never been seen from this side and
+   * the failure is SILENT: a feed that says "High Impact Expected" instead of
+   * "High", or "US" instead of "USD", produces zero matches — and zero matches
+   * renders as "No high-impact US events this week", which is a real and
+   * plausible answer. The card would look calm and be lying.
+   *
+   * So the country accepts either spelling, and the impact matches on its
+   * leading word. Nothing else this feed publishes begins with "high" — the
+   * levels are High, Medium, Low and Holiday — so there is no loosening of what
+   * gets through, only of how it may be spelled. */
   return list
-    .filter((e) => str(e?.country).toUpperCase() === "USD"
-                && str(e?.impact).toLowerCase() === "high")
+    .filter((e) => {
+      const c = str(e?.country).toUpperCase();
+      return (c === "USD" || c === "US")
+        && str(e?.impact).toLowerCase().startsWith("high");
+    })
     .map((e) => {
       const at = Date.parse(str(e.date));
       if (!Number.isFinite(at)) return null;
