@@ -1,23 +1,24 @@
 /* ---------------------------------------------------------------------------
- * Cloudflare Worker: the news pipe.
+ * Cloudflare Worker: the calendar pipe.
  *
- * WHY THIS EXISTS AT ALL, given the feed is free and needs no key.
+ * ONLY DEPLOY THIS IF YOU NEED IT. The app asks faireconomy.media directly
+ * first, and if that host sends Access-Control-Allow-Origin there is nothing
+ * for this to do — see CAL_URL in src/calendar.js. This exists for the case
+ * where it does not.
  *
- * CORS. Financial Juice's RSS is public, but like essentially every RSS server
- * it does not send Access-Control-Allow-Origin, so a browser on another origin
- * cannot read a single byte of it. Not rate-limited, not forbidden — refused
- * before the request is even made. Your bot never meets this because it runs
- * server-side, where same-origin policy does not apply. The app is a page, so
- * it does.
+ * WHY IT WOULD BE NEEDED, given the feed is free and needs no key: CORS. A
+ * static host that does not send that header cannot be read by a browser on
+ * another origin at all — not rate-limited, not forbidden, refused before the
+ * request is made. A bot never meets this because it runs server-side, where
+ * same-origin policy does not apply. The app is a page, so it does.
  *
  * That is the whole reason. There is no secret in here.
  *
- * IT IS A DUMB PIPE, ON PURPOSE. It does not parse. RSS is XML, Workers have no
- * DOMParser, and hand-rolled regex over someone else's XML is a bug waiting for
- * a headline with an angle bracket in it. The browser has a real XML parser
- * that is faster and more correct than anything that would fit here, so the
- * Worker fetches, caches and adds three headers. Twenty lines you can read in
- * one sitting and never have to trust again.
+ * IT IS A DUMB PIPE, ON PURPOSE. It does not parse and it does not filter —
+ * US-only and high-impact-only both happen in the browser, where they are two
+ * lines and easy to change. The Worker fetches, caches at the edge and adds
+ * three headers. Twenty lines you can read in one sitting and never have to
+ * trust again.
  *
  * QUICK IS THE CACHE. Every visitor collapses onto one upstream fetch per
  * TTL window, served from Cloudflare's edge near them rather than from
@@ -25,17 +26,17 @@
  * already has the current feed gets a 304 with no body at all.
  *
  * Deploy:
- *   npx wrangler deploy worker/news.js --name yser-news --compatibility-date 2026-01-01
- * then set NEWS_URL in src/news.js to the Worker's URL.
+ *   npx wrangler deploy worker/calendar.js --name yser-cal --compatibility-date 2026-01-01
+ * then add <meta name="cal-feed" content="<the URL it prints>"> to index.html.
  * ------------------------------------------------------------------------- */
 
-const FEED = "https://www.financialjuice.com/feed.ashx?xy=rss";
+const FEED = "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
 
 /* Seconds the edge holds a copy. Financial Juice publishes constantly, but a
-   headline that is fifteen seconds old is not stale to a human reading it, and
-   this is the difference between one upstream request per window and one per
-   visitor per poll. */
-const TTL = 15;
+   week's schedule barely moves — only `actual` changes, and only at the moment
+   of a release. Thirty seconds is well inside that and collapses every visitor
+   onto one upstream request per window. */
+const TTL = 30;
 
 /* Only these origins get an allow header. A public CORS proxy is exactly what
    this is NOT: leaving it open turns your Worker into free bandwidth for
@@ -80,7 +81,7 @@ export default {
         headers: {
           /* Some feed hosts return 403 to a bare fetch with no UA. */
           "User-Agent": "yser-flow/1.0 (+https://ysertrades.github.io)",
-          Accept: "application/rss+xml, application/xml, text/xml",
+          Accept: "application/json",
         },
       });
     } catch (e) {
@@ -127,7 +128,7 @@ export default {
       status: 200,
       headers: {
         ...cors(origin),
-        "Content-Type": "application/xml; charset=utf-8",
+        "Content-Type": "application/json; charset=utf-8",
         "Cache-Control": `public, max-age=${TTL}`,
         ...(etag ? { ETag: etag } : {}),
       },

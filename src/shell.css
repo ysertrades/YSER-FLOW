@@ -497,91 +497,86 @@
 }
 
 /* ---------------------------------------------------------------------------
-   The newswire. Third card in the stack, same glass.
+   The economic calendar. Third card, same glass.
 
-   FIXED ROWS, CLAMPED TO TWO LINES. A wire headline can be six words or forty,
-   and a list whose rows resize as items arrive is a list that moves under your
-   eye while you are reading it. Every row is the same height and long headlines
-   are cut with an ellipsis, so a burst of news changes the words and nothing
-   else. The card is the same size empty as full for the same reason — the
-   signature underneath must not move when the first poll lands. */
-.sess-news { width: 100%; padding: 12px 16px 8px; margin-bottom: 12px; }
-.sess-news-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.sess-news-top i { flex: 1; height: 1px; background: rgba(255, 255, 255, 0.09); }
-.sess-news-dot {
+   THREE COLUMNS, AND ONLY THE MIDDLE ONE IS FLUID. The stamp on the left and
+   the numbers on the right are both fixed width and tabular, because both
+   change — the stamp swaps for a live countdown on the next event, and the
+   numbers swap from a forecast to an actual the moment a print lands. A column
+   that resized on either would drag the event name with it while you were
+   reading it.
+
+   FIXED ROW HEIGHT AND TEN ROWS RESERVED, for the reason the wire had before
+   it: the card must be the same size before the first poll as after, or the
+   signature underneath moves as the week loads. */
+.sess-cal { width: 100%; padding: 12px 16px 8px; margin-bottom: 12px; }
+.sess-cal-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.sess-cal-top i { flex: 1; height: 1px; background: rgba(255, 255, 255, 0.09); }
+.sess-cal-dot {
   width: 6px; height: 6px; border-radius: 50%; flex: none;
   background: rgba(255, 255, 255, 0.22);
   transition: background 0.5s ease, box-shadow 0.5s ease;
 }
-.sess-news-dot.on { background: #4ade80; box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.13); }
-.sess-news-dot.down { background: #f2857f; box-shadow: 0 0 0 3px rgba(242, 133, 127, 0.13); }
-.sess-news-label, .sess-news-src {
+.sess-cal-dot.on { background: #4ade80; box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.13); }
+.sess-cal-dot.down { background: #f2857f; box-shadow: 0 0 0 3px rgba(242, 133, 127, 0.13); }
+.sess-cal-label, .sess-cal-src {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9.5px; font-weight: 800;
   letter-spacing: 0.2em; text-transform: uppercase;
   white-space: nowrap;
 }
-.sess-news-label { color: rgba(255, 255, 255, 0.3); }
-.sess-news-src { color: rgba(255, 255, 255, 0.22); letter-spacing: 0.14em; }
+.sess-cal-label { color: rgba(255, 255, 255, 0.3); }
+.sess-cal-src { color: rgba(255, 255, 255, 0.22); letter-spacing: 0.14em; }
 
-/* Five rows' worth, reserved whether or not there are five. The card is then
-   exactly as tall before the first poll as after it, and the signature below
-   never moves — which was the point, and which min-height on the ROWS did not
-   achieve: three items made a shorter card than five, so the first poll still
-   shifted everything under it. */
-.sess-news-list {
-  list-style: none; margin: 0; padding: 0;
-  min-height: 500px;                      /* 10 x 50px — keep in step with SHOW in News.jsx */
-}
-/* height, not min-height. Text is clamped to two lines, so two lines is the
-   most a row can ever hold — fixing the box at that size makes every row
-   identical whether its headline is four words or forty, and a burst of news
-   changes the words without moving anything. */
-.sess-news-item {
+.sess-cal-list { list-style: none; margin: 0; padding: 0; min-height: 500px; }
+.sess-cal-row {
   display: flex; align-items: flex-start; gap: 10px;
   padding: 8px 0;
   border-top: 0.4px solid rgba(176, 176, 176, 0.1);
-  height: 50px;
-  box-sizing: border-box;
+  height: 50px; box-sizing: border-box;
 }
-.sess-news-item:first-child { border-top: 0; }
-/* The stamp is the one thing that must never resize: it changes every second,
-   and a column that breathes drags the whole headline with it. */
-.sess-news-when {
-  flex: none; width: 34px;
+.sess-cal-row:first-child { border-top: 0; }
+
+.sess-cal-when {
+  flex: none; width: 62px;
+  display: flex; flex-direction: column; gap: 1px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10px; font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.32);
-  padding-top: 2px; text-align: right;
+  color: rgba(255, 255, 255, 0.42);
+  padding-top: 2px;
 }
-.sess-news-text {
+/* The countdown, on the next event only. */
+.sess-cal-when b { font-weight: 700; font-size: 9.5px; color: #e8ab42; }
+
+.sess-cal-title {
   flex: 1; min-width: 0;
   font-size: 12.5px; line-height: 1.36;
   color: rgba(255, 255, 255, 0.78);
-  text-decoration: none;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden;
 }
-a.sess-news-text:active { color: rgba(255, 255, 255, 0.95); }
-.sess-news-empty .sess-news-text { color: rgba(255, 255, 255, 0.3); }
-/* Landed inside the window you are trading. Deliberately a dot and not a
-   badge — it marks the item without competing with the headline. */
-.sess-news-flag {
-  flex: none; width: 5px; height: 5px; border-radius: 50%;
-  margin-top: 6px; background: #e8ab42;
-  box-shadow: 0 0 0 3px rgba(232, 171, 66, 0.12);
+.sess-cal-vals {
+  flex: none; width: 76px; text-align: right;
+  display: flex; flex-direction: column; gap: 1px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px; font-variant-numeric: tabular-nums;
+  padding-top: 2px;
 }
+.sess-cal-vals b { font-weight: 700; color: rgba(255, 255, 255, 0.92); }
+.sess-cal-vals i { font-style: normal; color: rgba(255, 255, 255, 0.3); font-size: 9.5px; }
 
-/* Only items that were not there last poll carry this class, so a poll that
-   brings nothing new — which is most of them — is visually silent. */
-.sess-news-item.is-new { animation: newsIn 0.42s cubic-bezier(.22, .7, .3, 1) both; }
-@keyframes newsIn {
-  from { opacity: 0; transform: translate3d(0, -5px, 0); }
-  to   { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sess-news-item.is-new { animation: none; }
-}
+/* Already happened. Dimmed rather than removed — the last two results are the
+   most useful numbers on the card, because they are the only ones that are
+   facts. */
+.sess-cal-row.is-done .sess-cal-title { color: rgba(255, 255, 255, 0.42); }
+.sess-cal-row.is-done .sess-cal-when { color: rgba(255, 255, 255, 0.24); }
+
+/* THE ONLY ROW THAT IS STYLED. Ten rows shouting is ten rows of noise; one lit
+   row with a live countdown is what you came to the screen for. */
+.sess-cal-row.is-next .sess-cal-title { color: rgba(255, 255, 255, 0.95); font-weight: 600; }
+.sess-cal-row.is-next .sess-cal-when { color: rgba(255, 255, 255, 0.7); }
+
+.sess-cal-empty .sess-cal-title { color: rgba(255, 255, 255, 0.3); }
 
 .sess-block { width: 100%; padding: 14px 16px 6px; margin-bottom: 12px; }
 .sess-blabel {
