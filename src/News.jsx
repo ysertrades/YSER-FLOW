@@ -147,8 +147,18 @@ export default function News({ active, sessionName, sessionStart }) {
              it as the first poll lands. */
           <li className="sess-news-item sess-news-empty">
             <span className="sess-news-when">—</span>
+            {/* THE REASON, not just the fact. "Wire down" alone costs a round
+                trip of messages to diagnose, and the distinction that matters
+                is right here: a request the BROWSER refused fails as a
+                TypeError with no detail — "Failed to fetch" — which is what
+                CORS and being offline both look like from script, because the
+                response was never handed over. Anything naming a status
+                reached the server and got an answer back. One word says which
+                side of that line you are on. */}
             <span className="sess-news-text">
-              {down ? "Cannot reach the wire" : "Waiting for the wire"}
+              {down
+                ? `Cannot reach the wire${status.error ? ` — ${status.error}` : ""}`
+                : "Waiting for the wire"}
             </span>
           </li>
         )}
