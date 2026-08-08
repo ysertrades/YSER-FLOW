@@ -18,58 +18,143 @@
 <style>
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{min-height:100vh;width:100%;overflow-x:hidden;background:#eeeeee;color:#1a1a1a;
+
+/* ═══════════════════════ THEME ═══════════════════════
+   The editor is dark, and exactly one thing in it is not: the stage.
+
+   That is the whole idea rather than a detail. This page has two jobs that want
+   opposite treatments — it is a TOOL, which belongs in the same dark room as
+   the rest of the app, and it is a VIEWER for a card that is light. Painting
+   the chrome light so it would not clash with the card had it backwards: it
+   made the tool compete with the thing being made. Dark chrome does the
+   opposite. The card becomes the only lit surface on the page and the eye goes
+   straight to it, which is what you are actually looking at.
+
+   Nothing here touches what gets EXPORTED. The card's own background is a
+   control on the right — #F5F5F5 by default, yours to change — and it is drawn
+   into the canvas, not styled by any of this. --paper below is the frame the
+   canvas sits in, not the card.
+
+   The values are the app's, not new ones. Ground, glass, hairline, chip fills
+   and the amber all come straight from the calculator and the field guide, so
+   the three surfaces read as one program rather than three that happen to be
+   dark. */
+:root{
+  --ground:#121212;              /* the app's ground, on every tab */
+
+  /* Four steps, and the bottom two are NOT the light theme's greys inverted.
+     #a8a8a8 on white is a footnote at about 2.6:1 and reads as quiet; the same
+     distance below this ground lands at 2.6:1 as well and reads as broken —
+     dark themes lose faint type much faster than light ones, because the eye is
+     adapted to the bright surfaces around it. Measured over the panel's real
+     composited fill rather than over the token: labels 5.0:1, notes 3.6:1. */
+  --ink:rgba(255,255,255,.92);   /* values you typed, and headings */
+  --ink-2:rgba(255,255,255,.62); /* supporting text */
+  --ink-3:rgba(255,255,255,.48); /* section labels */
+  --ink-4:rgba(255,255,255,.38); /* hints and footnotes */
+
+  --card:rgba(0,0,0,.2);         /* the app's .glass, to the value */
+  --card-bd:rgba(176,176,176,.1);
+  --line:rgba(255,255,255,.09);  /* the rule between sections */
+
+  --ctrl:rgba(255,255,255,.055); /* a control at rest */
+  --ctrl-bd:rgba(255,255,255,.12);
+  --ctrl-ink:rgba(255,255,255,.78);
+  --ctrl-hit:rgba(255,255,255,.10);
+
+  --on:#E9EDF4;                  /* a control that is selected: light on dark,
+                                    the inverse of the light theme's black pill */
+  --on-ink:#121212;
+
+  --signal:#E9B44C;              /* the app's one warm note, kept for the one
+                                    button that makes a file */
+  --signal-hit:#DCA63F;
+
+  --bad:#F2857F;                 /* errors, lifted off the light theme's #B3261E
+                                    which is unreadable on this ground */
+  --bad-bg:rgba(242,133,127,.10);
+  --bad-bd:rgba(242,133,127,.32);
+
+  --paper:#ffffff;               /* the stage, and nothing else */
+}
+
+body{min-height:100vh;width:100%;overflow-x:hidden;background:var(--ground);color:var(--ink);
+  /* Tells the engine to render form controls, focus rings, the colour picker's
+     popover and the panel's scrollbar dark. Without it the native parts stay
+     light and the page looks half-converted. */
+  color-scheme:dark;
   font-family:Poppins,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:1400px;margin:0 auto;padding:14px}
 .head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:14px}
 h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
-.sub{margin:2px 0 0;font-size:12.5px;color:#767676;max-width:44ch}
+.sub{margin:2px 0 0;font-size:12.5px;color:var(--ink-2);max-width:44ch}
 .acts{display:flex;gap:8px;flex-wrap:wrap}
 .btn{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:10px;
-  border:1px solid #d8d8d8;background:#fff;color:#222;font:500 13px/1 Poppins,sans-serif;cursor:pointer;white-space:nowrap}
-.btn:active{background:#f2f2f2}
-.btn.go{background:#171717;border-color:#171717;color:#fff}
-.btn.go:active{background:#000}
+  border:1px solid var(--ctrl-bd);background:var(--ctrl);color:var(--ctrl-ink);font:500 13px/1 Poppins,sans-serif;cursor:pointer;white-space:nowrap}
+.btn:active{background:var(--ctrl-hit)}
+/* The one button that produces a file gets the app's amber, the same note the
+   guide's Back button carries. In the light theme this was a black pill, which
+   on this ground would have been a hole. */
+.btn.go{background:var(--signal);border-color:var(--signal);color:var(--on-ink);font-weight:600}
+.btn.go:active{background:var(--signal-hit);border-color:var(--signal-hit)}
 .btn:disabled{opacity:.35;cursor:default}
 .grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
-.stage{position:relative;width:100%;margin:0 auto;border-radius:12px;overflow:hidden;background:#fff;border:1px solid #e4e4e4}
+/* THE ONE LIGHT SURFACE. The stage is a viewer, not chrome — the card inside it
+   is light and this is its frame, so it stays paper. On a dark page it stops
+   being one panel among several and becomes the only lit thing on screen, which
+   is the point. The border is a hairline of light rather than the light theme's
+   grey: against #121212 a grey edge reads as grime. */
+.stage{position:relative;width:100%;margin:0 auto;border-radius:12px;overflow:hidden;
+  background:var(--paper);border:1px solid rgba(255,255,255,.10)}
 canvas{display:block;width:100%;height:auto;touch-action:none}
 .drop{position:absolute;inset:0;display:grid;place-items:center;padding:18px;text-align:center;pointer-events:none}
+/* Deliberately unchanged. This sits ON the stage, so it is dark-on-paper like
+   everything else in there — the one place in the file where light-theme greys
+   are still the right answer. */
 .drop p{margin:0;font-size:13.5px;font-weight:500;color:#767676}
 .drop small{display:block;margin-top:3px;font-size:12px;color:#a0a0a0;font-weight:400}
-.tip{margin:8px 2px 0;font-size:11.5px;line-height:1.5;color:#8a8a8a}
-.err{margin-top:8px;padding:8px 10px;border-radius:9px;background:#fef2f2;border:1px solid #fbcaca;color:#b3261e;font-size:12.5px;display:none}
-.panel{background:#fff;border:1px solid #e4e4e4;border-radius:12px;padding:14px;min-width:0}
-.sec{border-top:1px solid #ededed;margin-top:14px;padding-top:14px}
+.tip{margin:8px 2px 0;font-size:11.5px;line-height:1.5;color:var(--ink-4)}
+.err{margin-top:8px;padding:8px 10px;border-radius:9px;background:var(--bad-bg);border:1px solid var(--bad-bd);color:var(--bad);font-size:12.5px;display:none}
+/* The app's card, to the value — same fill, same blur, same hairline, same 20px
+   radius the Sessions table and the guide's slides carry. */
+.panel{background:var(--card);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+  border:0.4px solid var(--card-bd);border-radius:20px;padding:14px;min-width:0}
+.sec{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}
 .sec:first-child{border-top:0;margin-top:0;padding-top:0}
 .sech{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:9px}
-.lab{margin:0;font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:#8e8e8e}
-.hint{font-size:11px;color:#a8a8a8;font-variant-numeric:tabular-nums;white-space:nowrap}
-.cap{margin:0 0 6px;font-size:11px;color:#a8a8a8}
+.lab{margin:0;font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.hint{font-size:11px;color:var(--ink-4);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cap{margin:0 0 6px;font-size:11px;color:var(--ink-4)}
 .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.chip{height:34px;padding:0 12px;border-radius:9px;border:1px solid #e2e2e2;background:#fff;color:#3d3d3d;
+.chip{height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--ctrl-bd);background:var(--ctrl);color:var(--ctrl-ink);
   font:500 12.5px/1 Poppins,sans-serif;cursor:pointer;white-space:nowrap}
-.chip:active{background:#f2f2f2}
-.chip[data-on="1"]{background:#171717;border-color:#171717;color:#fff}
-.mini{height:34px;min-width:34px;padding:0 8px;border-radius:9px;border:1px solid #e2e2e2;background:#fff;color:#5a5a5a;
+.chip:active{background:var(--ctrl-hit)}
+/* Selected is LIGHT on dark — the exact inverse of the light theme's black
+   pill, and the same #E9EDF4 the guide uses for the chip it is showing you. */
+.chip[data-on="1"]{background:var(--on);border-color:var(--on);color:var(--on-ink)}
+.mini{height:34px;min-width:34px;padding:0 8px;border-radius:9px;border:1px solid var(--ctrl-bd);background:var(--ctrl);color:var(--ink-2);
   font:500 12px/1 Poppins,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
-.mini:active{background:#f2f2f2}
-.field{height:34px;width:100%;border-radius:9px;border:1px solid #e2e2e2;background:#fff;padding:0 10px;
-  font:400 13px/1 Poppins,sans-serif;color:#222}
-.field:focus{outline:none;border-color:#9a9a9a}
-.num{height:34px;width:62px;border-radius:9px;border:1px solid #e2e2e2;background:#fff;padding:0 8px;
-  font:400 12.5px/1 Poppins,sans-serif;color:#222;font-variant-numeric:tabular-nums}
-.num:focus{outline:none;border-color:#9a9a9a}
+.mini:active{background:var(--ctrl-hit)}
+.field{height:34px;width:100%;border-radius:9px;border:1px solid var(--ctrl-bd);background:var(--ctrl);padding:0 10px;
+  font:400 13px/1 Poppins,sans-serif;color:var(--ink)}
+.field:focus{outline:none;border-color:rgba(255,255,255,.34)}
+.num{height:34px;width:62px;border-radius:9px;border:1px solid var(--ctrl-bd);background:var(--ctrl);padding:0 8px;
+  font:400 12.5px/1 Poppins,sans-serif;color:var(--ink);font-variant-numeric:tabular-nums}
+.num:focus{outline:none;border-color:rgba(255,255,255,.34)}
 .edge{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}
-.edge>span{width:46px;font-size:12px;color:#767676;flex:none}
-.note{margin:8px 0 0;font-size:11px;line-height:1.5;color:#a8a8a8}
-.check{display:flex;align-items:center;gap:8px;margin-top:11px;font-size:12.5px;color:#3d3d3d;cursor:pointer;user-select:none}
-.check input{width:16px;height:16px;accent-color:#171717}
+.edge>span{width:46px;font-size:12px;color:var(--ink-2);flex:none}
+.note{margin:8px 0 0;font-size:11px;line-height:1.5;color:var(--ink-4)}
+.check{display:flex;align-items:center;gap:8px;margin-top:11px;font-size:12.5px;color:var(--ctrl-ink);cursor:pointer;user-select:none}
+.check input{width:16px;height:16px;accent-color:var(--signal)}
 /* Swatches share the chip's 34px height so the background row lines up with
    every other control row in the panel. */
-.sw{width:34px;height:34px;padding:0;border-radius:9px;border:1px solid #dcdcdc;cursor:pointer;
+.sw{width:34px;height:34px;padding:0;border-radius:9px;border:1px solid var(--ctrl-bd);cursor:pointer;
   position:relative;flex:none;background-clip:padding-box}
-.sw[data-on="1"]{border-color:#171717;box-shadow:0 0 0 2px #fff inset,0 0 0 1px #171717}
+/* The inset ring has to be the GROUND, not white. It is a gap punched between
+   the swatch colour and its selection ring, so it reads as a gap only when it
+   matches the page behind it — white here would look like a second border on
+   every dark swatch. */
+.sw[data-on="1"]{border-color:var(--on);box-shadow:0 0 0 2px var(--ground) inset,0 0 0 1px var(--on)}
 /* A spectrum ring around the live colour, so the custom picker never reads as
    an empty square the way a plain swatch does at pale values. */
 .pick{width:34px;height:34px;border-radius:9px;overflow:hidden;border:0;padding:2.5px;
@@ -80,12 +165,15 @@ canvas{display:block;width:100%;height:auto;touch-action:none}
 .pick input[type=color]::-webkit-color-swatch{border:none;border-radius:6.5px}
 .pick input[type=color]::-moz-color-swatch{border:none;border-radius:6.5px}
 .hexf{width:96px;flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;text-transform:uppercase}
-.hexf.bad{border-color:#e8a3a3;background:#fff8f8}
+.hexf.bad{border-color:var(--bad-bd);background:var(--bad-bg);color:var(--bad)}
 .slider{position:relative;height:34px;display:flex;align-items:center;touch-action:none;cursor:pointer;user-select:none;width:100%}
 .slider[data-off="1"]{opacity:.4;cursor:default}
-.track{position:absolute;left:0;right:0;height:6px;border-radius:3px;background:#e6e6e6}
-.fill{position:absolute;left:0;height:6px;border-radius:3px;background:#171717}
-.thumb{position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid #cfcfcf;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+/* The slider inverts wholesale: the track was the light value and the fill the
+   dark one, which on this ground would have drawn the EMPTY part of the slider
+   and left the filled part invisible. */
+.track{position:absolute;left:0;right:0;height:6px;border-radius:3px;background:rgba(255,255,255,.12)}
+.fill{position:absolute;left:0;height:6px;border-radius:3px;background:var(--on)}
+.thumb{position:absolute;width:20px;height:20px;border-radius:50%;background:var(--on);border:1px solid rgba(0,0,0,.35);box-shadow:0 1px 3px rgba(0,0,0,.45)}
 /* A 20px handle is a mouse target. On touch the whole control grows. */
 @media (pointer:coarse){
   .slider{height:44px}
@@ -109,13 +197,16 @@ body.embedded .head{margin-bottom:10px}
   /* the sticky side panel is viewport-tall, so it has to give the pill room too */
   body.embedded .panel{max-height:calc(100vh - 40px - var(--pill-clear))}
 }
-.result{display:none;margin-top:8px;padding:10px;border-radius:10px;background:#fff;border:1px solid #e4e4e4;
+.result{display:none;margin-top:8px;padding:10px;border-radius:14px;background:var(--card);
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);border:0.4px solid var(--card-bd);
   align-items:center;gap:10px;flex-wrap:wrap}
 .result.on{display:flex}
-.result img{width:64px;height:36px;object-fit:cover;border-radius:5px;border:1px solid #e8e8e8;background:#f5f5f5}
-.result .meta{font-size:12px;color:#767676;flex:1;min-width:120px}
-.result .meta b{display:block;color:#222;font-weight:600;font-size:12.5px}
-.danger:active{background:#fff5f5;border-color:#f0b4b4;color:#b3261e}
+/* The thumbnail keeps a pale bed: it holds the card you just exported, and that
+   card is light. */
+.result img{width:64px;height:36px;object-fit:cover;border-radius:5px;border:1px solid var(--ctrl-bd);background:#f5f5f5}
+.result .meta{font-size:12px;color:var(--ink-2);flex:1;min-width:120px}
+.result .meta b{display:block;color:var(--ink);font-weight:600;font-size:12.5px}
+.danger:active{background:var(--bad-bg);border-color:var(--bad-bd);color:var(--bad)}
 /* The guide used to open as a panel inside this page. It is now a sibling
    surface in the shell that hosts both, reached from the tab switcher, so the
    panel, its button and the postMessage handshake behind them are all gone.

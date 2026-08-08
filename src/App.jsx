@@ -153,9 +153,12 @@ export default function App() {
         preload={preload}
         src="card/index.html"
         title="Trade card editor"
-        background="#eeeeee"  /* the editor's own body colour, so its first
-                                 paint is already right and the dark-to-light
-                                 switch does not flash */
+        background="#121212"  /* the editor's own body colour, so its first
+                                 paint is already right. This was #eeeeee, which
+                                 made the editor the one bright rectangle in a
+                                 dark app; it is dark now and the only lit thing
+                                 on it is the card preview. Keep in step with
+                                 --ground in card/index.html. */
       />
       <StaticPane
         active={tab === "guide"}
