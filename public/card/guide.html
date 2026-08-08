@@ -7,17 +7,29 @@
 <style>*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0}</style>
 </head>
 <body>
-<!-- The drifting field. This is the same background the app's Sessions tab
-     carries, and it is here for a reason that is easy to miss: the panels are
-     translucent black over a flat ground, and backdrop-filter over a flat
-     ground does NOTHING. With nothing behind them to blur, "glass" cards are
-     just dark boxes. The dots are what the blur has to work on — they are what
-     makes the same CSS read as glass here as it does there. -->
-<canvas class="field" id="field" aria-hidden="true" role="presentation"></canvas>
 <!-- Where the card's edge used to say "this is one slide of several", a hairline
      across the top says it instead. It is the only chrome above the fold. -->
 <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
 <div class="deck" id="deck">
+
+  <!-- The drifting field. Two things about where it sits.
+
+       WHY IT EXISTS: the panels are translucent black over a flat ground, and
+       backdrop-filter over a flat ground does NOTHING. With nothing behind them
+       to blur, "glass" cards are just dark boxes. The dots are what the blur
+       has to work on — they are what makes the same CSS read as glass here as
+       it does on the Sessions tab.
+
+       WHY IT IS IN HERE: it used to be a position:fixed canvas at body level,
+       which made it a separate compositing layer competing with the slide
+       fading above it, and iOS reorders fixed layers more eagerly than anything
+       else on a page. Every z-index written out there was a REQUEST that the
+       field stay behind the card, and being refused for one frame is exactly
+       what "they jump in front of the slide card and go back" is. In here the
+       field and the slides are siblings in the deck's own stacking context,
+       ordered 0 before 1 — and painting order inside a stacking context is not
+       the compositor's to reinterpret. -->
+  <canvas class="field" id="field" aria-hidden="true" role="presentation"></canvas>
 
   <!-- ═══════════════════ COVER · THE RULE ═══════════════════ -->
   <!-- Identity and argument on one slide. The hero card is not decoration here:
@@ -672,13 +684,22 @@ body{
    replace it. Painting its own backdrop would put a second opaque layer over
    var(--ground), which is the separate-looking wash this file spent a round
    getting rid of. */
+/* absolute, inside .deck — not fixed at body level. See the note on the canvas
+   itself: a fixed layer's order against the fading slide is the compositor's
+   call, a sibling's order inside a stacking context is not. .deck is
+   position:relative with a z-index, so it is that stacking context already, and
+   it fills everything below the 2px progress bar. */
 .field{
-  position:fixed; inset:0; z-index:0;
+  position:absolute; inset:0; z-index:0;
+  /* Spelled out, not left to inset:0. A canvas is a REPLACED element, and for
+     those width:auto resolves to the intrinsic size — the element's default
+     300x150 — rather than stretching between the offsets. .deck has no padding
+     so 100% is the whole of it. */
+  width:100%; height:100%;
   display:block; pointer-events:none;
-  /* The layer is permanent. Without this the compositor is free to promote
-     this canvas at the same instant it promotes the slide that is fading, and
-     placing two brand-new layers against each other is how the field ends up
-     drawn over the card for a frame. A layer that already exists cannot be
+  /* The layer is permanent, so it is never BUILT at the moment a slide starts
+     fading. Two brand-new layers being placed against each other is the frame
+     where the order comes out wrong; a layer that already exists cannot be
      mis-ordered on creation. */
   transform:translateZ(0);
   will-change:transform;
@@ -705,24 +726,27 @@ body{
 /* --nav-clear is the pill's footprint. It is scroll padding, not a reserved
    band: content passes under the pill the whole way down and only comes to
    rest clear of it at the very end of the scroll. */
-/* z-index:0 looks like a no-op and is the reason the field stays behind the
-   card while a slide changes.
+/* The z-index does two jobs and neither of them is decoration.
 
-   Without it a slide is a positioned element with z-index:auto, which has NO
-   stacking context of its own — its descendants paint in the deck's. The
-   moment slideFade starts, opacity drops below 1 and a stacking context comes
-   into existence around all of them; when it finishes, that context is thrown
-   away again. Everything inside is re-parented in the paint order twice per
-   slide change, and a fixed, composited canvas underneath has to be placed
-   against it both times. That is the frame where the dots come to the front.
+   IT PUTS THE SLIDE ABOVE THE FIELD, as a sibling in the deck's stacking
+   context — field at 0, slides at 1. Ordering two siblings inside one stacking
+   context is settled by the painting algorithm and cannot be reinterpreted by
+   the compositor, which is the whole reason the canvas moved in here.
 
-   Declaring z-index:0 gives the slide that stacking context permanently, so
-   the animation changes opacity and nothing else. Deliberately z-index and NOT
-   isolation:isolate, which would also do it: isolation establishes a BACKDROP
-   ROOT, and the panel's backdrop-filter inside one has nothing left to sample
-   — the glass would stop blurring the field for good. */
+   IT MAKES THE SLIDE'S OWN STACKING CONTEXT PERMANENT. Without a z-index a
+   slide is positioned with z-index:auto and has no stacking context, so its
+   descendants paint in the deck's. The moment slideFade starts, opacity drops
+   below 1 and a context comes into existence around all of them; when the
+   animation finishes it is thrown away again. Everything inside gets
+   re-parented in the paint order twice per slide change. Declaring a z-index
+   means the animation changes opacity and nothing else.
+
+   Deliberately z-index and NOT isolation:isolate, which would also give it a
+   permanent context: isolation establishes a BACKDROP ROOT, and the panel's
+   backdrop-filter inside one has nothing left to sample — the glass would stop
+   blurring the field for good. */
 .slide{
-  position:absolute; inset:0; z-index:0;
+  position:absolute; inset:0; z-index:1;
   display:block; overflow-y:auto; overflow-x:hidden;
   padding:20px 16px var(--nav-clear);
   -webkit-overflow-scrolling:touch;
