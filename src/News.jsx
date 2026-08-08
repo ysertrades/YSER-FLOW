@@ -122,7 +122,8 @@ export default function News({ active, sessionName, sessionStart }) {
         {shown.map((it) => (
           <li
             key={it.id}
-            className={`sess-news-item${fresh.current.has(it.id) ? " is-new" : ""}`}
+            className={`sess-news-item${fresh.current.has(it.id) ? " is-new" : ""}`
+              + (it.breaking ? " is-breaking" : "")}
           >
             <span className="sess-news-when">{ago(it.at, now)}</span>
             {it.link ? (

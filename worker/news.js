@@ -85,6 +85,26 @@ export default {
       return new Response("upstream unreachable", { status: 502, headers: cors(origin) });
     }
 
+    /* THE RATE LIMIT IS THE ONE UPSTREAM STATUS WORTH HANDLING BY NAME.
+     *
+     * Cloudflare fronts this feed and answers 429 with a retry-after if it is
+     * polled too hard. Ignoring that gets the Worker locked out, which delivers
+     * the news LATER rather than sooner — the opposite of what leaning on it
+     * was for. Passing the 429 and its retry-after through means the client's
+     * own backoff is driven by the number the origin actually asked for
+     * instead of one guessed here.
+     *
+     * A Worker is shared by every visitor, so it is also the right place for
+     * this: one instance being told to go quiet quietens everybody, which is
+     * exactly the behaviour that keeps the limit from being hit again. */
+    if (upstream.status === 429) {
+      const retry = upstream.headers.get("Retry-After") || "60";
+      return new Response("rate limited upstream", {
+        status: 429,
+        headers: { ...cors(origin), "Retry-After": retry },
+      });
+    }
+
     if (!upstream.ok) {
       return new Response(`upstream ${upstream.status}`, {
         status: 502, headers: cors(origin),
