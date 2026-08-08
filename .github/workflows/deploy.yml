@@ -87,14 +87,18 @@ jobs:
             mv "$RUNNER_TEMP/$dst" "public/$dst" || return 1
           }
           grab ff_calendar_thisweek.json calendar.json
-          # The week after, and it is allowed to fail on its own. The app's
-          # trading week runs Sunday 6 PM to Sunday 6 PM while the feed's file
-          # runs Sunday midnight to Saturday midnight, and the mismatch sits
-          # right on the evening the new week is meant to appear. This is the
-          # hedge against the feed rolling over late; || true because the
-          # primary file covers the normal case by itself and a missing hedge
-          # must not take the real calendar down with it.
-          grab ff_calendar_nextweek.json calendar-next.json || echo "next week unavailable — carrying on"
+          # NO SECOND FILE. A next-week fetch was here as a hedge against the
+          # feed rolling its file over late, and the runner answered the
+          # question this sandbox could not: ff_calendar_nextweek.json is a
+          # 404. The path does not exist on that host.
+          #
+          # It is not needed. The feed's week begins at Sunday MIDNIGHT and the
+          # app's trading week does not open until Sunday 6 PM ET, so the file
+          # has already turned over eighteen hours before anything is due to
+          # appear from it — and with this workflow on a fifteen-minute cron,
+          # the shipped copy is never more than that behind. The only span the
+          # file does not cover is Saturday midnight to Sunday 6 PM, which is
+          # the weekend and holds no US releases.
 
       - run: npm run build
       - uses: actions/configure-pages@v5
