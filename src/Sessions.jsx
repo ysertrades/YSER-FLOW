@@ -3,7 +3,7 @@ import Particles from "./Particles";
 import { useEtTick, readDay, fmtCountdown, MARKS, RING_SESSIONS } from "./sessions";
 import useTilt from "./useTilt";
 import Feed from "./Feed";
-import News from "./News";
+import Calendar from "./Calendar";
 
 /* ---------------------------------------------------------------------------
  * Sessions — the trading day as a 24-hour dial.
@@ -469,21 +469,14 @@ export default function Sessions({ active, ready = true, now }) {
             periodLabel={d.primary ? d.primary.name : "Today"}
           />
 
-          {/* And why. Three cards now say one sentence — the dial is when, the
-              price is what, the wire is why.
+          {/* And what is coming. Three cards say one sentence now: the dial
+              is WHEN, the price is WHAT, this is WHAT NEXT.
 
-              sessionStart is derived from the countdown rather than from a
-              calendar date: the window's length minus what is left of it is how
-              long it has been open, and now minus that is when it opened. Same
-              answer, no timezone arithmetic, and it cannot disagree with the
-              dial because it comes from the same number. */}
-          <News
-            active={shown}
-            sessionName={d.primary ? d.primary.name : null}
-            sessionStart={d.primary
-              ? Date.now() - (((d.primary.end - d.primary.start) * 60) - d.primary.remaining) * 1000
-              : null}
-          />
+              It replaced a newswire, and the change is tense. A wire is past
+              tense — it tells you something moved once it already has. A
+              calendar is future tense, which on a screen built around WHEN is
+              the one that belongs. */}
+          <Calendar active={shown} />
 
           {/* the same signature the calculator carries at the foot of its scroll */}
           <div className="signature">
