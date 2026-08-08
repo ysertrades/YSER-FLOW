@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Particles from "./Particles";
 import { useEtTick, readDay, fmtCountdown, MARKS, RING_SESSIONS } from "./sessions";
 import useTilt from "./useTilt";
+import Feed from "./Feed";
 
 /* ---------------------------------------------------------------------------
  * Sessions — the trading day as a 24-hour dial.
@@ -453,6 +454,19 @@ export default function Sessions({ active, ready = true, now }) {
               ))}
             </div>
           </div>
+
+          {/* Price, under the windows it is priced against.
+
+              periodId is what makes the range reset itself: it is the open
+              window's key while one is running and the ET date otherwise, so
+              the high and low start again exactly when they stop meaning
+              anything. Feed does not know what a killzone is and does not need
+              to — it folds prices into whatever period it is handed. */}
+          <Feed
+            active={shown}
+            periodId={d.primary ? d.primary.key : `day-${d.day}`}
+            periodLabel={d.primary ? d.primary.name : "Today"}
+          />
 
           {/* the same signature the calculator carries at the foot of its scroll */}
           <div className="signature">
