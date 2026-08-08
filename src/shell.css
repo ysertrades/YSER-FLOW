@@ -958,3 +958,10 @@ a.sess-news-text:active { color: rgba(255, 255, 255, 0.95); }
 .sess-scroll { position: relative; z-index: 1; }
 
 
+
+/* Their own convention — titles carrying "BREAKING" or "URGENT". Worth a
+   louder weight and the app's warm note, and nothing more: on a wire where a
+   tenth of the traffic is flagged, a coloured row would just become the
+   normal-looking row. */
+.sess-news-item.is-breaking .sess-news-text { color: rgba(255, 255, 255, 0.95); font-weight: 600; }
+.sess-news-item.is-breaking .sess-news-when { color: #e8ab42; }
