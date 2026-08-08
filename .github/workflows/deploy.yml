@@ -69,16 +69,32 @@ jobs:
         continue-on-error: true
         run: |
           set -euo pipefail
-          curl -fsS --retry 3 --retry-delay 2 --max-time 25 \
-            -H "User-Agent: yser-flow/1.0 (+https://ysertrades.github.io)" \
-            -H "Accept: application/json" \
-            "https://nfs.faireconomy.media/ff_calendar_thisweek.json" \
-            -o "$RUNNER_TEMP/calendar.json"
-          # Refuse to ship something that is not a JSON array. A courtesy page
-          # or an error body written to this path would be served as the
-          # calendar and parsed as a shape change.
-          node -e "const a=require(process.env.RUNNER_TEMP + '/calendar.json'); if(!Array.isArray(a)) throw new Error('not an array'); console.log('calendar:', a.length, 'events')"
-          mv "$RUNNER_TEMP/calendar.json" public/calendar.json
+          # Explicit `|| return 1` rather than leaning on errexit: a function
+          # called on the left of `||` runs with errexit SUPPRESSED, so the
+          # optional fetch below would sail past a failed curl and try to
+          # validate a file that was never written.
+          grab() {
+            src="$1"; dst="$2"
+            curl -fsS --retry 3 --retry-delay 2 --max-time 25 \
+              -H "User-Agent: yser-flow/1.0 (+https://ysertrades.github.io)" \
+              -H "Accept: application/json" \
+              "https://nfs.faireconomy.media/$src" \
+              -o "$RUNNER_TEMP/$dst" || return 1
+            # Refuse to ship something that is not a JSON array. A courtesy page
+            # or an error body written to this path would be served as the
+            # calendar and parsed as a shape change.
+            node -e "const a=require(process.env.RUNNER_TEMP + '/$dst'); if(!Array.isArray(a)) throw new Error('not an array'); console.log('$dst:', a.length, 'events')" || return 1
+            mv "$RUNNER_TEMP/$dst" "public/$dst" || return 1
+          }
+          grab ff_calendar_thisweek.json calendar.json
+          # The week after, and it is allowed to fail on its own. The app's
+          # trading week runs Sunday 6 PM to Sunday 6 PM while the feed's file
+          # runs Sunday midnight to Saturday midnight, and the mismatch sits
+          # right on the evening the new week is meant to appear. This is the
+          # hedge against the feed rolling over late; || true because the
+          # primary file covers the normal case by itself and a missing hedge
+          # must not take the real calendar down with it.
+          grab ff_calendar_nextweek.json calendar-next.json || echo "next week unavailable — carrying on"
 
       - run: npm run build
       - uses: actions/configure-pages@v5
